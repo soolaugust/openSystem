@@ -179,4 +179,37 @@ mod tests {
         let result = verify_signature(&other_pub, &sig, wasm, manifest);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_generate_keypair_unique() {
+        let (priv1, pub1) = generate_keypair();
+        let (priv2, pub2) = generate_keypair();
+        assert_ne!(priv1, priv2);
+        assert_ne!(pub1, pub2);
+    }
+
+    #[test]
+    fn test_generate_keypair_hex_lengths() {
+        let (priv_hex, pub_hex) = generate_keypair();
+        // Ed25519 keys: 32 bytes = 64 hex chars
+        assert_eq!(priv_hex.len(), 64);
+        assert_eq!(pub_hex.len(), 64);
+    }
+
+    #[test]
+    fn test_sign_content_deterministic_per_key() {
+        let (priv_hex, _) = generate_keypair();
+        let wasm = b"same data";
+        let manifest = b"same manifest";
+        let sig1 = sign_content(&priv_hex, wasm, manifest).unwrap();
+        let sig2 = sign_content(&priv_hex, wasm, manifest).unwrap();
+        // Ed25519 signatures are deterministic for the same key + message
+        assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn test_content_digest_empty_inputs() {
+        let d = content_digest(b"", b"");
+        assert_eq!(d.len(), 32); // SHA256 always 32 bytes
+    }
 }

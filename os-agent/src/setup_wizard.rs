@@ -428,3 +428,71 @@ fn prompt_password(message: &str) -> Result<String> {
         return Ok(line.trim_end_matches('\n').to_string());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encrypt_api_key_roundtrip() {
+        // encrypt_api_key XOR-encodes with machine-id, decrypt_api_key reverses it
+        let original = "sk-test-api-key-12345";
+        let encrypted = encrypt_api_key(original);
+        // encrypted should be hex and different from original
+        assert_ne!(encrypted, original);
+        assert!(hex::decode(&encrypted).is_ok());
+        // decrypt_api_key (from config.rs) should recover original
+        let decrypted = crate::config::decrypt_api_key(&encrypted);
+        assert_eq!(decrypted, original);
+    }
+
+    #[test]
+    fn test_encrypt_empty_key() {
+        let encrypted = encrypt_api_key("");
+        assert_eq!(encrypted, "");
+    }
+
+    #[test]
+    fn test_encrypt_deterministic() {
+        let key = "my-api-key";
+        let enc1 = encrypt_api_key(key);
+        let enc2 = encrypt_api_key(key);
+        assert_eq!(enc1, enc2);
+    }
+
+    #[test]
+    fn test_encrypt_different_keys_differ() {
+        let enc1 = encrypt_api_key("key-one");
+        let enc2 = encrypt_api_key("key-two");
+        assert_ne!(enc1, enc2);
+    }
+
+    #[test]
+    fn test_detect_network_interfaces_no_loopback() {
+        let interfaces = detect_network_interfaces();
+        // loopback should never appear
+        assert!(!interfaces.contains(&"lo".to_string()));
+    }
+
+    #[test]
+    fn test_detect_network_interfaces_returns_vec() {
+        // should not panic, returns a Vec (may be empty in CI)
+        let interfaces = detect_network_interfaces();
+        // all entries should be non-empty strings
+        for iface in &interfaces {
+            assert!(!iface.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_api_endpoint_config_debug() {
+        let cfg = ApiEndpointConfig {
+            base_url: "https://api.example.com".to_string(),
+            api_key: "secret".to_string(),
+            model: "gpt-4".to_string(),
+        };
+        let debug = format!("{:?}", cfg);
+        assert!(debug.contains("https://api.example.com"));
+        assert!(debug.contains("gpt-4"));
+    }
+}

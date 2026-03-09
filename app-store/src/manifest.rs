@@ -63,4 +63,56 @@ mod tests {
         let result = serde_json::from_str::<AppManifest>(r#"{"name": "app"}"#);
         assert!(result.is_err()); // version is required
     }
+
+    #[test]
+    fn test_manifest_ui_spec_skipped_when_none() {
+        let manifest = AppManifest {
+            name: "app".to_string(),
+            version: "1.0".to_string(),
+            description: String::new(),
+            permissions: vec![],
+            ui_spec: None,
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        assert!(
+            !json.contains("ui_spec"),
+            "ui_spec should be skipped when None"
+        );
+    }
+
+    #[test]
+    fn test_manifest_ui_spec_included_when_some() {
+        let manifest = AppManifest {
+            name: "app".to_string(),
+            version: "1.0".to_string(),
+            description: String::new(),
+            permissions: vec![],
+            ui_spec: Some(serde_json::json!({"layout": "grid"})),
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        assert!(json.contains("ui_spec"));
+        assert!(json.contains("grid"));
+    }
+
+    #[test]
+    fn test_manifest_empty_name_allowed() {
+        let json = r#"{"name": "", "version": "0.1"}"#;
+        let manifest: AppManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.name, "");
+    }
+
+    #[test]
+    fn test_manifest_unicode_fields() {
+        let manifest = AppManifest {
+            name: "计算器".to_string(),
+            version: "1.0.0".to_string(),
+            description: "一个简单的计算器".to_string(),
+            permissions: vec!["存储".to_string()],
+            ui_spec: None,
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        let parsed: AppManifest = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "计算器");
+        assert_eq!(parsed.permissions, vec!["存储"]);
+    }
 }

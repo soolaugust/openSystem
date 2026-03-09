@@ -10,12 +10,16 @@
     "接线 os-agent InstallApp：调用 app-store API 搜索并下载安装应用",
     "为 os-agent intent.rs 添加单元测试",
     "为 resource-scheduler types.rs 和 executor.rs 添加单元测试",
-    "为 os-agent app_generator.rs 的 AppSpec 和 utils.rs 的 extract_json 添加单元测试"
+    "为 os-agent app_generator.rs 的 AppSpec 和 utils.rs 的 extract_json 添加单元测试",
+    "osctl 单元测试：resolve_private_key + add_signature_to_osp (9 tests)",
+    "app-store HTTP 集成测试：upload/search/get/download (9 tests)",
+    "Ed25519 端到端签名测试：sign/upload/verify/tamper (7 tests)",
+    "修复 URL 注入：osctl cmd_install/cmd_list 和 os-agent handle_install_app 使用 .query()"
   ],
   "metrics": {
-    "test_count": 97,
+    "test_count": 122,
     "clippy_warnings": 0,
-    "test_coverage_pct": 25
+    "test_coverage_pct": 40
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

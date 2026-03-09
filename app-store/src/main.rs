@@ -9,8 +9,8 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
 
     let db_path =
-        std::env::var("AIOS_STORE_DB").unwrap_or_else(|_| "/var/lib/aios/store.db".into());
-    let store_dir = std::env::var("AIOS_STORE_DIR").unwrap_or_else(|_| "/var/lib/aios/apps".into());
+        std::env::var("OPENSYSTEM_STORE_DB").unwrap_or_else(|_| "/var/lib/opensystem/store.db".into());
+    let store_dir = std::env::var("OPENSYSTEM_STORE_DIR").unwrap_or_else(|_| "/var/lib/opensystem/apps".into());
 
     std::fs::create_dir_all(&store_dir)?;
 
@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = create_router(state);
-    let port = std::env::var("AIOS_STORE_PORT").unwrap_or_else(|_| "8888".into());
+    let port = std::env::var("OPENSYSTEM_STORE_PORT").unwrap_or_else(|_| "8888".into());
     let bind_addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     tracing::info!("App store server listening on :{}", port);

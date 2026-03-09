@@ -23,7 +23,7 @@ pub struct GeneratedApp {
     pub spec: AppSpec,
 }
 
-const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are a Rust/WASI code generator for AIOS apps.
+const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are a Rust/WASI code generator for openSystem apps.
 Generate a complete, compilable Rust program that compiles to wasm32-wasip1.
 
 RULES:
@@ -36,7 +36,7 @@ RULES:
 
 Example of minimal valid app:
 fn main() {
-    println!("Hello from AIOS!");
+    println!("Hello from openSystem!");
 }
 
 Respond with ONLY the Rust code, no explanation, no markdown code blocks."#;
@@ -56,7 +56,7 @@ impl AppGenerator {
         Self {
             client,
             apps_dir: PathBuf::from("/apps"),
-            build_dir: PathBuf::from("/tmp/aios-build"),
+            build_dir: PathBuf::from("/tmp/opensystem-build"),
         }
     }
 
@@ -106,7 +106,7 @@ impl AppGenerator {
 
     async fn generate_code(&self, prompt: &str, spec: &AppSpec) -> Result<String> {
         let user_msg = format!(
-            "Create an AIOS app: {}\n\nApp spec:\n{}",
+            "Create an openSystem app: {}\n\nApp spec:\n{}",
             prompt,
             serde_json::to_string_pretty(spec)?
         );
@@ -129,7 +129,7 @@ impl AppGenerator {
 
         // Write Cargo.toml for the generated app (no external dependencies)
         let cargo_toml = r#"[package]
-name = "aios-app-gen"
+name = "opensystem-app-gen"
 version = "0.1.0"
 edition = "2021"
 

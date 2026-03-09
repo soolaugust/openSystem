@@ -26,7 +26,7 @@ impl CgroupMonitor {
     pub fn new() -> Self {
         Self {
             cgroup_root: PathBuf::from("/sys/fs/cgroup"),
-            aios_cgroup: "aios.slice".to_string(),
+            aios_cgroup: "opensystem.slice".to_string(),
             prev_snapshots: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -34,7 +34,7 @@ impl CgroupMonitor {
     pub fn collect(&self) -> Result<Vec<CgroupMetrics>> {
         let aios_path = self.cgroup_root.join(&self.aios_cgroup);
         if !aios_path.exists() {
-            tracing::debug!("AIOS cgroup slice not found, returning empty metrics");
+            tracing::debug!("openSystem cgroup slice not found, returning empty metrics");
             return Ok(vec![]);
         }
 

@@ -21,7 +21,7 @@ pub struct Intent {
     pub parameters: serde_json::Value,
 }
 
-const SYSTEM_PROMPT: &str = r#"You are the intent classifier for AIOS, an AI-first operating system.
+const SYSTEM_PROMPT: &str = r#"You are the intent classifier for openSystem, an AI-first operating system.
 Classify user input into one of these intents:
 - create_app: User wants to create a new app (e.g., "make a timer", "create a notes app")
 - run_app: User wants to run an existing app (e.g., "open the timer", "run pomodoro")

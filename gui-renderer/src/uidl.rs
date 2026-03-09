@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
-/// UIDL Widget — the basic building block of AIOS UI
+/// UIDL Widget — the basic building block of openSystem UI
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Widget {
@@ -147,7 +147,7 @@ mod tests {
                 "type": "vstack",
                 "gap": 16,
                 "children": [
-                    {"type": "text", "content": "Hello AIOS"},
+                    {"type": "text", "content": "Hello openSystem"},
                     {"type": "button", "label": "Click me", "action": "test.click"}
                 ]
             }

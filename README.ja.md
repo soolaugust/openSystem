@@ -1,6 +1,11 @@
-# AIOS
+# openSystem
 
 **AIを前提とするOS。**
+
+> ⚠️ **実験的プロジェクト。** 本プロジェクトは初期研究段階にあり、本番環境での使用は推奨されません。
+> API、設定形式、アーキテクチャは予告なく変更される場合があります。コントリビューションや大胆なアイデアを歓迎します。
+
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
 
 [English](README.md) | [简体中文](README.zh-CN.md) | 日本語 | [한국어](README.ko.md)
 
@@ -75,14 +80,51 @@ python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
 qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
 ```
 
+### AIモデルの設定
+
+初回起動時、セットアップウィザードが対話形式でモデル設定を案内します。
+再設定する場合：
+
+```bash
+opensystem-setup
+```
+
+設定ファイルは `/etc/os-agent/model.conf` に保存されます。直接編集することも可能です：
+
+```toml
+[api]
+base_url = "https://api.deepseek.com/v1"   # OpenAI互換エンドポイントであれば何でも可
+api_key  = "<your-api-key>"
+model    = "deepseek-chat"
+# api_format = "anthropic"                 # Anthropicネイティブ形式の場合はコメントを外す
+
+[network]
+timeout_ms  = 10000
+retry_count = 3
+
+[fallback]                                 # 任意：フォールバックエンドポイント
+base_url = "https://api.anthropic.com/v1"
+api_key  = "<your-api-key>"
+model    = "claude-sonnet-4-6"
+```
+
+**サポートされるAPIフォーマット：**
+
+| フォーマット | `api_format` の値 | 認証ヘッダー | 対応プロバイダー例 |
+|------------|------------------|------------|-----------------|
+| OpenAI互換（デフォルト）| `"openai"` または省略 | `Authorization: Bearer` | DeepSeek、Qwen、vLLM、OpenAI |
+| Anthropicネイティブ | `"anthropic"` | `x-api-key` | Claude (api.anthropic.com) |
+
+> URLに `"anthropic"` が含まれる場合、Anthropicフォーマットとして自動検出されます。`api_format` の明示的な設定は不要です。
+
 ### 自然言語ターミナル
 
-起動後、システムは `aios>` プロンプトを表示し、自然言語入力を受け付けます：
+起動後、システムは `opensystem>` プロンプトを表示し、自然言語入力を受け付けます：
 
 ```
-aios> システムのメモリ状態を確認して
-aios> 現在のディレクトリのファイルを一覧表示して
-aios> 25分作業・5分休憩のポモドーロタイマーアプリを作って
+opensystem> システムのメモリ状態を確認して
+opensystem> 現在のディレクトリのファイルを一覧表示して
+opensystem> 25分作業・5分休憩のポモドーロタイマーアプリを作って
 ```
 
 最後のコマンドは自動的にRust/WASMコードを生成・コンパイルし、`.osp`アプリパッケージとしてインストールします。所要時間は約30秒です。

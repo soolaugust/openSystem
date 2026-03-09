@@ -1,4 +1,4 @@
-# AIOS Board Configuration: QEMU x86_64
+# openSystem Board Configuration: QEMU x86_64
 
 ## Target
 
@@ -7,7 +7,7 @@ QEMU virtual machine, x86_64 architecture.
 ## Purpose
 
 Primary development and testing target. Used for:
-- AIOS MVP validation
+- openSystem MVP validation
 - CI/CD testing
 - Demo recordings
 

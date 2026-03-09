@@ -11,7 +11,7 @@ use tracing::info;
 
 /// Flag file written after a successful first-boot setup.
 /// The first-boot check looks for this file, NOT the config path, so that
-/// setting AIOS_CONFIG to an already-existing file cannot bypass the wizard.
+/// setting OPENSYSTEM_CONFIG to an already-existing file cannot bypass the wizard.
 const SETUP_DONE_FLAG: &str = "/etc/os-agent/.setup_done";
 
 #[tokio::main]
@@ -24,10 +24,10 @@ async fn main() -> Result<()> {
         )
         .init();
 
-    info!("AIOS os-agent starting...");
+    info!("openSystem os-agent starting...");
 
     // Check if first boot using the dedicated flag file.
-    // AIOS_CONFIG only controls which config file to load, not setup detection.
+    // OPENSYSTEM_CONFIG only controls which config file to load, not setup detection.
     if !std::path::Path::new(SETUP_DONE_FLAG).exists() {
         info!("No configuration found. Running setup wizard...");
         setup_wizard::run_setup_wizard()
@@ -37,8 +37,8 @@ async fn main() -> Result<()> {
         std::fs::write(SETUP_DONE_FLAG, b"").context("Failed to create setup-done flag")?;
     }
 
-    // AIOS_CONFIG env var selects which config file to load.
-    let config_path = std::env::var("AIOS_CONFIG")
+    // OPENSYSTEM_CONFIG env var selects which config file to load.
+    let config_path = std::env::var("OPENSYSTEM_CONFIG")
         .unwrap_or_else(|_| config::ModelConfig::default_config_path().to_string());
 
     let model_config = config::ModelConfig::load(&config_path)

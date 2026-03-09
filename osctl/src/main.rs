@@ -5,10 +5,10 @@ use flate2::Compression;
 use std::io::Write;
 
 #[derive(Parser)]
-#[command(name = "osctl", about = "AIOS control tool")]
+#[command(name = "osctl", about = "openSystem control tool")]
 struct Cli {
     /// App store server URL
-    #[arg(long, env = "AIOS_STORE_URL", default_value = "http://localhost:8080")]
+    #[arg(long, env = "OPENSYSTEM_STORE_URL", default_value = "http://localhost:8080")]
     store_url: String,
 
     #[command(subcommand)]
@@ -17,7 +17,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Manage AIOS applications
+    /// Manage openSystem applications
     App {
         #[command(subcommand)]
         subcommand: AppCommands,
@@ -31,7 +31,7 @@ enum AppCommands {
         /// Path to the .osp file
         path: String,
         /// Ed25519 private key (hex) for signing.
-        /// If not provided, reads from AIOS_SIGNING_KEY env or ~/.config/aios/signing.key
+        /// If not provided, reads from OPENSYSTEM_SIGNING_KEY env or ~/.config/opensystem/signing.key
         #[arg(long)]
         key: Option<String>,
     },
@@ -263,13 +263,13 @@ fn resolve_private_key(cli_key: Option<String>) -> Result<Option<String>> {
     if let Some(k) = cli_key {
         return Ok(Some(k));
     }
-    if let Ok(k) = std::env::var("AIOS_SIGNING_KEY") {
+    if let Ok(k) = std::env::var("OPENSYSTEM_SIGNING_KEY") {
         if !k.is_empty() {
             return Ok(Some(k));
         }
     }
     if let Some(home) = dirs_next::home_dir() {
-        let key_path = home.join(".config").join("aios").join("signing.key");
+        let key_path = home.join(".config").join("opensystem").join("signing.key");
         if key_path.exists() {
             let key = std::fs::read_to_string(&key_path).with_context(|| {
                 format!("failed to read signing key from {}", key_path.display())

@@ -1,6 +1,6 @@
-//! os-syscall-bindings: WASI system call bindings for AIOS Apps
+//! os-syscall-bindings: WASI system call bindings for openSystem Apps
 //!
-//! This crate is the sole interface between AIOS Apps (compiled to wasm32-wasip1)
+//! This crate is the sole interface between openSystem Apps (compiled to wasm32-wasip1)
 //! and the host OS runtime. The `extern "C"` host functions are provided by the
 //! Wasmtime host at link time when targeting wasm32. On native targets, stub
 //! implementations are provided so `cargo check` and unit tests can run.
@@ -97,18 +97,18 @@ pub mod ui {
     mod host {
         #[cfg(target_arch = "wasm32")]
         extern "C" {
-            pub fn __aios_ui_render(spec_ptr: *const u8, spec_len: usize) -> u64;
-            pub fn __aios_ui_update(handle: u64, diff_ptr: *const u8, diff_len: usize);
+            pub fn __opensystem_ui_render(spec_ptr: *const u8, spec_len: usize) -> u64;
+            pub fn __opensystem_ui_update(handle: u64, diff_ptr: *const u8, diff_len: usize);
         }
 
         #[cfg(target_arch = "wasm32")]
         pub fn ui_render(ptr: *const u8, len: usize) -> u64 {
-            unsafe { __aios_ui_render(ptr, len) }
+            unsafe { __opensystem_ui_render(ptr, len) }
         }
 
         #[cfg(target_arch = "wasm32")]
         pub fn ui_update(handle: u64, ptr: *const u8, len: usize) {
-            unsafe { __aios_ui_update(handle, ptr, len) }
+            unsafe { __opensystem_ui_update(handle, ptr, len) }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -170,7 +170,7 @@ pub mod timer {
     /// Called by the host to fire a timer callback. Only exported on wasm32.
     #[cfg(target_arch = "wasm32")]
     #[no_mangle]
-    pub extern "C" fn __aios_timer_callback(idx: u64) {
+    pub extern "C" fn __opensystem_timer_callback(idx: u64) {
         if let Ok(cbs) = CALLBACKS.lock() {
             if let Some(Some(cb)) = cbs.get(idx as usize) {
                 cb();
@@ -181,18 +181,18 @@ pub mod timer {
     mod host {
         #[cfg(target_arch = "wasm32")]
         extern "C" {
-            pub fn __aios_timer_set_interval(ms: u64, callback_idx: u64) -> u64;
-            pub fn __aios_timer_clear(timer_id: u64);
+            pub fn __opensystem_timer_set_interval(ms: u64, callback_idx: u64) -> u64;
+            pub fn __opensystem_timer_clear(timer_id: u64);
         }
 
         #[cfg(target_arch = "wasm32")]
         pub fn timer_set_interval(ms: u64, idx: u64) -> u64 {
-            unsafe { __aios_timer_set_interval(ms, idx) }
+            unsafe { __opensystem_timer_set_interval(ms, idx) }
         }
 
         #[cfg(target_arch = "wasm32")]
         pub fn timer_clear(timer_id: u64) {
-            unsafe { __aios_timer_clear(timer_id) }
+            unsafe { __opensystem_timer_clear(timer_id) }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -240,12 +240,12 @@ pub mod storage {
     mod host {
         #[cfg(target_arch = "wasm32")]
         extern "C" {
-            pub fn __aios_storage_read(
+            pub fn __opensystem_storage_read(
                 key_ptr: *const u8,
                 key_len: usize,
                 out_len: *mut u32,
             ) -> *const u8;
-            pub fn __aios_storage_write(
+            pub fn __opensystem_storage_write(
                 key_ptr: *const u8,
                 key_len: usize,
                 val_ptr: *const u8,
@@ -255,7 +255,7 @@ pub mod storage {
 
         #[cfg(target_arch = "wasm32")]
         pub fn storage_read(key_ptr: *const u8, key_len: usize, out_len: *mut u32) -> *const u8 {
-            unsafe { __aios_storage_read(key_ptr, key_len, out_len) }
+            unsafe { __opensystem_storage_read(key_ptr, key_len, out_len) }
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -265,7 +265,7 @@ pub mod storage {
             val_ptr: *const u8,
             val_len: usize,
         ) -> i32 {
-            unsafe { __aios_storage_write(key_ptr, key_len, val_ptr, val_len) }
+            unsafe { __opensystem_storage_write(key_ptr, key_len, val_ptr, val_len) }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -296,7 +296,7 @@ pub mod notify {
     mod host {
         #[cfg(target_arch = "wasm32")]
         extern "C" {
-            pub fn __aios_notify_send(
+            pub fn __opensystem_notify_send(
                 title_ptr: *const u8,
                 title_len: usize,
                 body_ptr: *const u8,
@@ -311,7 +311,7 @@ pub mod notify {
             body_ptr: *const u8,
             body_len: usize,
         ) {
-            unsafe { __aios_notify_send(title_ptr, title_len, body_ptr, body_len) }
+            unsafe { __opensystem_notify_send(title_ptr, title_len, body_ptr, body_len) }
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -364,7 +364,7 @@ pub mod net {
     mod host {
         #[cfg(target_arch = "wasm32")]
         extern "C" {
-            pub fn __aios_net_http_get(
+            pub fn __opensystem_net_http_get(
                 url_ptr: *const u8,
                 url_len: usize,
                 out_len: *mut u32,
@@ -379,7 +379,7 @@ pub mod net {
             out_len: *mut u32,
             err_len: *mut u32,
         ) -> *const u8 {
-            unsafe { __aios_net_http_get(url_ptr, url_len, out_len, err_len) }
+            unsafe { __opensystem_net_http_get(url_ptr, url_len, out_len, err_len) }
         }
 
         #[cfg(not(target_arch = "wasm32"))]

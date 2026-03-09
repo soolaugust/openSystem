@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build.py — AIOS ROM build pipeline.
+build.py — openSystem ROM build pipeline.
 
 Takes hardware_manifest.json, generates kconfig fragment, and orchestrates
 buildroot to produce a bootable .img file.
@@ -46,7 +46,7 @@ def load_manifest(path: str) -> dict:
 
 def resolve_kconfig(manifest_path: str, output_dir: Path) -> Path:
     """Step 1: hardware_manifest -> kconfig fragment."""
-    kconfig_path = output_dir / "aios.fragment"
+    kconfig_path = output_dir / "opensystem.fragment"
     resolver = SCRIPT_DIR / "hardware_resolver.py"
     run([
         sys.executable, str(resolver),
@@ -97,7 +97,7 @@ def build_rootfs(manifest: dict, kconfig_path: Path, br_dir: Path, output_dir: P
         print(f"  Manually appending kconfig fragment to .config")
         with open(br_dir / ".config", "a") as f:
             with open(kconfig_path) as kf:
-                f.write("\n# AIOS hardware kconfig fragment\n")
+                f.write("\n# openSystem hardware kconfig fragment\n")
                 f.write(kf.read())
     else:
         result = run([
@@ -141,7 +141,7 @@ def package_image(manifest: dict, rootfs_path: Path, output_dir: Path, output_na
         print(f"  Note: rootfs not found (buildroot not run). Creating development stub.")
         with open(output_img, "wb") as f:
             # Write a recognizable header
-            header = b"AIOS_IMG_V1\x00"
+            header = b"OPENSYSTEM_IMG_V1\x00"
             manifest_bytes = json.dumps(manifest, indent=2).encode()
             f.write(header)
             f.write(len(manifest_bytes).to_bytes(4, "little"))
@@ -194,16 +194,16 @@ first-lba: 2048
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build AIOS ROM image from hardware manifest")
+    parser = argparse.ArgumentParser(description="Build openSystem ROM image from hardware manifest")
     parser.add_argument("--manifest", required=True, help="Path to hardware_manifest.json")
     parser.add_argument("--output", default="system.img", help="Output image filename")
-    parser.add_argument("--build-dir", default="/tmp/aios-rom-build", help="Build directory")
+    parser.add_argument("--build-dir", default="/tmp/opensystem-rom-build", help="Build directory")
     parser.add_argument("--skip-buildroot", action="store_true",
                         help="Skip buildroot, generate stub image (for testing)")
     args = parser.parse_args()
 
     print("=" * 60)
-    print("AIOS ROM Builder")
+    print("openSystem ROM Builder")
     print("=" * 60)
 
     build_dir = Path(args.build_dir)

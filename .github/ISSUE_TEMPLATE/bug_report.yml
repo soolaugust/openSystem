@@ -21,7 +21,7 @@ body:
       label: Steps to reproduce
       placeholder: |
         1. Start os-agent with config ...
-        2. Type '...' at aios> prompt
+        2. Type '...' at opensystem> prompt
         3. See error
     validations:
       required: true

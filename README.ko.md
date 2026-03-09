@@ -1,6 +1,11 @@
-# AIOS
+# openSystem
 
 **AI를 전제로 하는 운영체제.**
+
+> ⚠️ **실험적 프로젝트.** 본 프로젝트는 초기 연구 단계에 있으며, 프로덕션 환경에서의 사용은 권장하지 않습니다.
+> API, 설정 형식, 아키텍처는 예고 없이 변경될 수 있습니다. 기여와 대담한 아이디어를 환영합니다.
+
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | 한국어
 
@@ -75,14 +80,51 @@ python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
 qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
 ```
 
+### AI 모델 설정
+
+최초 부팅 시 설정 마법사가 대화형으로 모델 설정을 안내합니다.
+언제든지 재설정하려면:
+
+```bash
+opensystem-setup
+```
+
+설정 파일은 `/etc/os-agent/model.conf`에 저장됩니다. 직접 편집할 수도 있습니다:
+
+```toml
+[api]
+base_url = "https://api.deepseek.com/v1"   # OpenAI 호환 엔드포인트라면 모두 가능
+api_key  = "<your-api-key>"
+model    = "deepseek-chat"
+# api_format = "anthropic"                 # Anthropic 네이티브 형식 사용 시 주석 해제
+
+[network]
+timeout_ms  = 10000
+retry_count = 3
+
+[fallback]                                 # 선택 사항: 폴백 엔드포인트
+base_url = "https://api.anthropic.com/v1"
+api_key  = "<your-api-key>"
+model    = "claude-sonnet-4-6"
+```
+
+**지원되는 API 형식:**
+
+| 형식 | `api_format` 값 | 인증 헤더 | 지원 제공업체 예시 |
+|------|----------------|----------|-----------------|
+| OpenAI 호환 (기본값) | `"openai"` 또는 생략 | `Authorization: Bearer` | DeepSeek, Qwen, vLLM, OpenAI |
+| Anthropic 네이티브 | `"anthropic"` | `x-api-key` | Claude (api.anthropic.com) |
+
+> URL에 `"anthropic"`이 포함되면 Anthropic 형식으로 자동 감지됩니다. `api_format`을 명시적으로 설정할 필요가 없습니다.
+
 ### 자연어 터미널
 
-부팅 후 시스템은 `aios>` 프롬프트를 표시하며 자연어 입력을 받습니다:
+부팅 후 시스템은 `opensystem>` 프롬프트를 표시하며 자연어 입력을 받습니다:
 
 ```
-aios> 시스템 메모리 상태 확인해줘
-aios> 현재 디렉토리 파일 목록 보여줘
-aios> 25분 작업, 5분 휴식 포모도로 타이머 앱 만들어줘
+opensystem> 시스템 메모리 상태 확인해줘
+opensystem> 현재 디렉토리 파일 목록 보여줘
+opensystem> 25분 작업, 5분 휴식 포모도로 타이머 앱 만들어줘
 ```
 
 마지막 명령은 자동으로 Rust/WASM 코드를 생성·컴파일하여 `.osp` 앱 패키지로 설치합니다. 약 30초 소요됩니다.

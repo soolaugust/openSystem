@@ -1,14 +1,19 @@
-# AIOS
+# openSystem
 
 **为 AI 而生的操作系统。**
+
+> ⚠️ **实验性项目。** 本项目处于早期研究阶段，不适合生产使用。
+> API、配置格式和架构可能随时变更，欢迎贡献代码和各种大胆想法。
+
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
 
 [English](README.md) | 简体中文 | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 今天所有运行中的操作系统，都诞生于大语言模型存在之前。
-Linux 是为人类操作而设计的。AIOS 是为 AI 操作而设计的——
+Linux 是为人类操作而设计的。openSystem 是为 AI 操作而设计的——
 而人类负责*指挥*。
 
-AIOS 不是 Linux 发行版，也不是研究原型。
+openSystem 不是 Linux 发行版，也不是研究原型。
 它是一个明确的押注：在未来五年内，每一次有意义的操作系统交互都将由 AI 介入。
 我们正在构建从这个假设出发的操作系统，而不是把 AI 叠加在 50 年 POSIX 遗产之上。
 
@@ -48,7 +53,7 @@ AIOS 不是 Linux 发行版，也不是研究原型。
 
 ## 与 Linux 的关系
 
-> AIOS 在 v1 中将 Linux 作为硬件抽象层，同时并行开发自己的内核。
+> openSystem 在 v1 中将 Linux 作为硬件抽象层，同时并行开发自己的内核。
 > 我们借鉴 Linux 的硬件支持，感谢 30 年的驱动程序积累。
 > 但我们的进程模型不是 POSIX，我们的 Shell 不是 Shell。
 > 如果你需要 Linux 兼容性：Fork 本项目并构建兼容层——我们会链接它，但永远不会合并。
@@ -75,14 +80,50 @@ python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
 qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
 ```
 
+### 配置 AI 模型
+
+首次启动时，向导会交互式引导你完成模型配置。之后可随时重新配置：
+
+```bash
+opensystem-setup
+```
+
+配置文件位于 `/etc/os-agent/model.conf`，也可直接编辑：
+
+```toml
+[api]
+base_url = "https://api.deepseek.com/v1"   # 任何 OpenAI 兼容端点
+api_key  = "<your-api-key>"
+model    = "deepseek-chat"
+# api_format = "anthropic"                 # Anthropic 原生格式时取消注释
+
+[network]
+timeout_ms  = 10000
+retry_count = 3
+
+[fallback]                                 # 可选：备用端点
+base_url = "https://api.anthropic.com/v1"
+api_key  = "<your-api-key>"
+model    = "claude-sonnet-4-6"
+```
+
+**支持的 API 格式：**
+
+| 格式 | `api_format` 值 | 认证 header | 示例服务商 |
+|------|----------------|-------------|-----------|
+| OpenAI 兼容（默认）| `"openai"` 或省略 | `Authorization: Bearer` | DeepSeek、Qwen、vLLM、OpenAI |
+| Anthropic 原生 | `"anthropic"` | `x-api-key` | Claude (api.anthropic.com) |
+
+> URL 中包含 `"anthropic"` 时会自动识别为 Anthropic 格式，无需手动设置 `api_format`。
+
 ### 自然语言终端
 
-启动后，系统呈现 `aios>` 提示符，接受自然语言输入：
+启动后，系统呈现 `opensystem>` 提示符，接受自然语言输入：
 
 ```
-aios> 查看系统内存状态
-aios> 列出当前目录的文件
-aios> 创建一个番茄钟 App，25分钟工作，5分钟休息
+opensystem> 查看系统内存状态
+opensystem> 列出当前目录的文件
+opensystem> 创建一个番茄钟 App，25分钟工作，5分钟休息
 ```
 
 最后一条指令将自动生成 Rust/WASM 代码、编译并安装为 `.osp` 应用包，全程约 30 秒。
@@ -96,7 +137,7 @@ aios> 创建一个番茄钟 App，25分钟工作，5分钟休息
 > 离线模式不是目标。这和你的 iPhone 选择 iCloud 的决策一样。
 
 **关于 POSIX：**
-> 在 AIOS 中，软件是按需生成的。POSIX 兼容性就像坚持让流媒体平台支持 VHS 一样。
+> 在 openSystem 中，软件是按需生成的。POSIX 兼容性就像坚持让流媒体平台支持 VHS 一样。
 
 ## 许可证
 

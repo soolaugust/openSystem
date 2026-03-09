@@ -80,7 +80,7 @@
   },
   "base": {
     "always": {
-      "_comment": "Always-included base config for all AIOS builds",
+      "_comment": "Always-included base config for all openSystem builds",
       "kconfig": "CONFIG_64BIT=y\nCONFIG_SMP=y\nCONFIG_CGROUPS=y\nCONFIG_CGROUP_SCHED=y\nCONFIG_BPF_SYSCALL=y\nCONFIG_BPF_JIT=y\nCONFIG_SCHED_CLASS_EXT=y\nCONFIG_IO_URING=y\nCONFIG_SQUASHFS=y\nCONFIG_EXT4_FS=y\nCONFIG_VFAT_FS=y\nCONFIG_EFI=y\nCONFIG_OVERLAY_FS=y"
     }
   }

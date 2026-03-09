@@ -1,42 +1,33 @@
-# Contributing to AIOS
+# Contributing to openSystem
 
-AIOS is an opinionated project. Before contributing code, read this document carefully.
+> **Experimental project.** openSystem is in early-stage research. APIs break, things crash, and the design is still evolving. All contributions are welcome — including wild ideas.
 
-## The Golden Rule
+openSystem is an opinionated project, but opinions are negotiable at this stage. Before contributing, read this document.
 
-**Every PR must have a corresponding GitHub Discussion.**
+## Getting Started
 
-We debate design first. Code is the last step, not the first.
+No prior discussion required for bug fixes, small improvements, or experiments. Just open a PR.
 
-## What We Accept
+For larger changes (new subsystems, architectural shifts), opening an Issue or Discussion first helps avoid duplicated effort — but it's a courtesy, not a requirement.
+
+## What We're Looking For
 
 - Bug fixes with clear reproduction steps
 - Performance improvements with benchmarks
 - New features that advance the AI-first OS vision
 - Documentation improvements
 - Test coverage increases
+- Wild experiments — even if they don't merge, they inform the design
 
-## What We Will Never Merge
+## Design Direction
 
-- POSIX compatibility layers (fork this repo if you want that)
+openSystem is building toward an AI-native OS. Contributions that move in the opposite direction are unlikely to merge, including:
+
+- POSIX compatibility layers (fork this repo if you want that — we'll link to it)
 - Traditional shell interfaces or bash compatibility
-- "Just add a fallback to X" — offline/legacy fallbacks contradict the core premise
-- Features that make AIOS more like an existing OS
+- Offline/legacy fallbacks that contradict the AI-first premise
 
-## Discussion Before Code
-
-Open a Discussion before writing code for:
-- Any new feature
-- Any architectural change
-- Any change to public APIs (UIDL format, `.osp` package format, syscall bindings)
-
-The first batch of maintainers will be recruited from people who contribute the highest-quality Discussion threads, not the most PRs.
-
-## Seed Discussions (Join These)
-
-- [RFC: Should UIDL be declarative or imperative?](../../discussions)
-- [Design Decision: AI in the syscall path — latency budget](../../discussions)
-- [Controversial: Why we don't support POSIX](../../discussions)
+That said: **if you have a compelling argument, make it**. We're in experiment mode.
 
 ## Development Setup
 
@@ -53,18 +44,17 @@ cargo clippy --workspace -- -D warnings
 cargo fmt --all
 ```
 
-## PR Rules
+## PR Checklist
 
-1. Link to the Discussion that approved this work
-2. All tests must pass: `cargo test --workspace`
-3. No new clippy warnings: `cargo clippy --workspace -- -D warnings`
-4. Code formatted: `cargo fmt --all -- --check`
-5. No new `unsafe` blocks without explicit justification
+1. Tests pass: `cargo test --workspace`
+2. No new clippy warnings: `cargo clippy --workspace -- -D warnings`
+3. Code formatted: `cargo fmt --all -- --check`
+4. New `unsafe` blocks include a comment explaining why
 
 ## Third-Party Licenses
 
-Some build-time tools used by AIOS are GPL-licensed (buildroot, genimage, sched_ext).
-These are build tools, not linked libraries. AIOS source code and runtime remain MIT.
+Some build-time tools used by openSystem are GPL-licensed (buildroot, genimage, sched_ext).
+These are build tools, not linked libraries. openSystem source code and runtime remain MIT.
 
 | Component | License | Role |
 |-----------|---------|------|

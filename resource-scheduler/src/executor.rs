@@ -1,5 +1,5 @@
 //! cgroup v2 resource allocation executor.
-//! Writes resource limits to /sys/fs/cgroup/aios.slice/{app}/
+//! Writes resource limits to /sys/fs/cgroup/opensystem.slice/{app}/
 
 use crate::types::ResourceAction;
 use anyhow::{Context, Result};
@@ -30,7 +30,7 @@ impl CgroupExecutor {
     pub fn new() -> Self {
         Self {
             cgroup_root: PathBuf::from("/sys/fs/cgroup"),
-            aios_cgroup: "aios.slice".to_string(),
+            aios_cgroup: "opensystem.slice".to_string(),
         }
     }
 

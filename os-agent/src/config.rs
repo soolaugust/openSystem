@@ -84,7 +84,7 @@ impl ModelConfig {
 /// Uses XOR with device-specific key derived from /etc/machine-id.
 pub fn decrypt_api_key(encrypted: &str) -> String {
     let machine_id = std::fs::read_to_string("/etc/machine-id")
-        .unwrap_or_else(|_| "aios-default-machine-id-000000".to_string());
+        .unwrap_or_else(|_| "opensystem-default-machine-id".to_string());
     let machine_bytes = machine_id.as_bytes();
 
     let bytes = hex::decode(encrypted).unwrap_or_else(|_| encrypted.as_bytes().to_vec());

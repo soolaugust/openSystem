@@ -1,14 +1,19 @@
-# AIOS
+# openSystem
 
 **The OS that assumes you have AI.**
+
+> ⚠️ **Experimental.** This project is in early-stage research. It is not ready for production use.
+> APIs, config formats, and architecture will change without notice. Contributions and wild ideas welcome.
+
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
 
 English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 Every operating system alive today was designed before large language models existed.
-Linux was designed for humans to operate. AIOS is designed for AI to operate —
+Linux was designed for humans to operate. openSystem is designed for AI to operate —
 and for humans to *direct*.
 
-AIOS is not a Linux distribution. It is not a research prototype.
+openSystem is not a Linux distribution. It is not a research prototype.
 It is an opinionated bet: that within five years, every meaningful OS interaction
 will be mediated by AI. We are building the OS that starts from that assumption,
 not one that bolts AI on top of 50 years of POSIX legacy.
@@ -49,7 +54,7 @@ not one that bolts AI on top of 50 years of POSIX legacy.
 
 ## Relationship with Linux
 
-> AIOS uses Linux as a hardware abstraction layer in v1, while developing our own kernel in parallel.
+> openSystem uses Linux as a hardware abstraction layer in v1, while developing our own kernel in parallel.
 > We use Linux as a reference for hardware support, and are grateful for 30 years of driver work.
 > But our process model is not POSIX, and our shell is not a shell.
 > If you want Linux compatibility: fork this project and make a compatibility layer — we will link to it and never merge it.
@@ -76,6 +81,43 @@ python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
 qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
 ```
 
+### Configure AI Model
+
+On first boot, a setup wizard will guide you through model configuration interactively.
+To reconfigure at any time:
+
+```bash
+opensystem-setup
+```
+
+The configuration is stored at `/etc/os-agent/model.conf`. You can also edit it directly:
+
+```toml
+[api]
+base_url = "https://api.deepseek.com/v1"   # Any OpenAI-compatible endpoint
+api_key  = "<your-api-key>"
+model    = "deepseek-chat"
+# api_format = "anthropic"                 # Uncomment for Anthropic native format
+
+[network]
+timeout_ms  = 10000
+retry_count = 3
+
+[fallback]                                 # Optional: fallback endpoint
+base_url = "https://api.anthropic.com/v1"
+api_key  = "<your-api-key>"
+model    = "claude-sonnet-4-6"
+```
+
+**Supported API formats:**
+
+| Format | `api_format` value | Auth header | Example providers |
+|--------|-------------------|-------------|-------------------|
+| OpenAI-compatible (default) | `"openai"` or omit | `Authorization: Bearer` | DeepSeek, Qwen, vLLM, OpenAI |
+| Anthropic native | `"anthropic"` | `x-api-key` | Claude (api.anthropic.com) |
+
+> The endpoint URL containing `"anthropic"` is auto-detected as Anthropic format — no need to set `api_format` explicitly.
+
 ## Controversial Positions
 
 **On AI in the syscall path:**
@@ -85,7 +127,7 @@ qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
 > Offline mode is not a goal. This is the same decision your iPhone made with iCloud.
 
 **On POSIX:**
-> In AIOS, software is generated on-demand. POSIX compatibility here is like insisting a streaming service support VHS.
+> In openSystem, software is generated on-demand. POSIX compatibility here is like insisting a streaming service support VHS.
 
 ## License
 

@@ -2,14 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+> **Note:** openSystem is experimental. Versions below 1.0.0 make no stability guarantees —
+> APIs, file formats, and config structure may change between any two releases.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-03-09
+## [0.0.1] - 2026-03-09
 
-Initial MVP release — the OS that assumes you have AI.
+Initial experimental release — the OS that assumes you have AI.
 
 ### Added
 
@@ -40,5 +42,5 @@ Initial MVP release — the OS that assumes you have AI.
   - Memory-safe IPC primitives
   - Timer management
 
-[Unreleased]: https://github.com/soolaugust/openSystem/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/soolaugust/openSystem/releases/tag/v0.1.0
+[Unreleased]: https://github.com/soolaugust/openSystem/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/soolaugust/openSystem/releases/tag/v0.0.1

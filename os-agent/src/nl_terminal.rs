@@ -14,7 +14,7 @@ impl NlTerminal {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        println!("AIOS v0.1.0 — The OS that assumes you have AI.");
+        println!("openSystem v0.0.1 — The OS that assumes you have AI.");
         println!("Type your intent in natural language. Type 'exit' to quit.\n");
 
         // Detect if stdin is a TTY; if not, fall back to plain BufRead
@@ -30,7 +30,7 @@ impl NlTerminal {
     async fn run_interactive(&mut self) -> Result<()> {
         let mut rl = DefaultEditor::new()?;
         loop {
-            let readline = rl.readline("aios> ");
+            let readline = rl.readline("opensystem> ");
             match readline {
                 Ok(line) => {
                     let line = line.trim().to_string();
@@ -66,7 +66,7 @@ impl NlTerminal {
             if line.is_empty() {
                 continue;
             }
-            println!("aios> {}", line);
+            println!("opensystem> {}", line);
             if !self.handle_input(&line).await {
                 break;
             }
@@ -77,7 +77,7 @@ impl NlTerminal {
 
     async fn handle_input(&self, input: &str) -> bool {
         if input.eq_ignore_ascii_case("shutdown") || input.eq_ignore_ascii_case("exit") {
-            println!("Shutting down AIOS...");
+            println!("Shutting down openSystem...");
             return false;
         }
 
@@ -146,7 +146,7 @@ impl NlTerminal {
     async fn handle_file_op(&self, input: &str) {
         // Ask AI to execute the file operation as a shell command
         let messages = vec![
-            Message::system("You are the AIOS shell. The user wants a file system operation. \
+            Message::system("You are the openSystem shell. The user wants a file system operation. \
                 Respond with ONLY the output of the operation — run it mentally and output what `bash -c` would print. \
                 No explanations, just the output. If you need to execute something that modifies the filesystem, \
                 say: [WOULD EXECUTE: <command>] instead."),
@@ -179,7 +179,7 @@ impl NlTerminal {
 
         let messages = vec![
             Message::system(
-                "You are AIOS system monitor. Answer the user's system query concisely \
+                "You are openSystem system monitor. Answer the user's system query concisely \
                 based on the provided /proc data. Use Chinese if the question is in Chinese. \
                 Format numbers in human-readable form (MB/GB).",
             ),

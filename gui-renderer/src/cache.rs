@@ -109,8 +109,7 @@ mod tests {
     #[test]
     fn test_cache_invalidate() {
         let cache = UidlCache::new(10);
-        let doc =
-            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        let doc = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
         cache.insert("k1".to_string(), doc);
         assert!(cache.get("k1").is_some());
         cache.invalidate("k1");
@@ -120,8 +119,7 @@ mod tests {
     #[test]
     fn test_cache_clear() {
         let cache = UidlCache::new(10);
-        let doc =
-            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        let doc = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
         cache.insert("k1".to_string(), doc.clone());
         cache.insert("k2".to_string(), doc);
         assert_eq!(cache.len(), 2);
@@ -146,8 +144,7 @@ mod tests {
     #[test]
     fn test_cache_lru_evicts_oldest() {
         let cache = UidlCache::new(2);
-        let doc =
-            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        let doc = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
         cache.insert("oldest".to_string(), doc.clone());
         // Small delay to ensure different timestamps
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -167,8 +164,7 @@ mod tests {
     #[test]
     fn test_cache_capacity_one() {
         let cache = UidlCache::new(1);
-        let doc =
-            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        let doc = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
         cache.insert("k1".to_string(), doc.clone());
         cache.insert("k2".to_string(), doc);
         assert_eq!(cache.len(), 1);

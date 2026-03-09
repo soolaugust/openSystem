@@ -229,7 +229,10 @@ retry_count = 1
 
     #[test]
     fn test_default_config_path() {
-        assert_eq!(ModelConfig::default_config_path(), "/etc/os-agent/model.conf");
+        assert_eq!(
+            ModelConfig::default_config_path(),
+            "/etc/os-agent/model.conf"
+        );
     }
 
     #[test]

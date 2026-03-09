@@ -8,9 +8,10 @@ use std::sync::{Arc, Mutex};
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
 
-    let db_path =
-        std::env::var("OPENSYSTEM_STORE_DB").unwrap_or_else(|_| "/var/lib/opensystem/store.db".into());
-    let store_dir = std::env::var("OPENSYSTEM_STORE_DIR").unwrap_or_else(|_| "/var/lib/opensystem/apps".into());
+    let db_path = std::env::var("OPENSYSTEM_STORE_DB")
+        .unwrap_or_else(|_| "/var/lib/opensystem/store.db".into());
+    let store_dir =
+        std::env::var("OPENSYSTEM_STORE_DIR").unwrap_or_else(|_| "/var/lib/opensystem/apps".into());
 
     std::fs::create_dir_all(&store_dir)?;
 

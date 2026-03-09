@@ -42,11 +42,7 @@ fn make_osp_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
     enc.finish().unwrap()
 }
 
-fn make_signed_osp(
-    priv_hex: &str,
-    manifest: &[u8],
-    wasm: &[u8],
-) -> Vec<u8> {
+fn make_signed_osp(priv_hex: &str, manifest: &[u8], wasm: &[u8]) -> Vec<u8> {
     let sig = signing::sign_content(priv_hex, wasm, manifest).unwrap();
     make_osp_bytes(&[
         ("app.wasm", wasm),
@@ -73,9 +69,7 @@ fn build_upload_multipart(osp_bytes: &[u8], public_key: Option<&str>) -> (String
     // public_key field (if provided)
     if let Some(pk) = public_key {
         body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-        body.extend_from_slice(
-            b"Content-Disposition: form-data; name=\"public_key\"\r\n\r\n",
-        );
+        body.extend_from_slice(b"Content-Disposition: form-data; name=\"public_key\"\r\n\r\n");
         body.extend_from_slice(pk.as_bytes());
         body.extend_from_slice(b"\r\n");
     }

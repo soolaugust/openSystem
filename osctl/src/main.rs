@@ -8,7 +8,11 @@ use std::io::Write;
 #[command(name = "osctl", about = "openSystem control tool")]
 struct Cli {
     /// App store server URL
-    #[arg(long, env = "OPENSYSTEM_STORE_URL", default_value = "http://localhost:8080")]
+    #[arg(
+        long,
+        env = "OPENSYSTEM_STORE_URL",
+        default_value = "http://localhost:8080"
+    )]
     store_url: String,
 
     #[command(subcommand)]
@@ -416,9 +420,8 @@ mod tests {
         let osp = sample_osp();
         let pkg = app_store::osp::OspPackage::from_bytes(&osp).unwrap();
 
-        let sig =
-            app_store::signing::sign_content(&priv_hex, &pkg.wasm_bytes, &pkg.manifest_json)
-                .unwrap();
+        let sig = app_store::signing::sign_content(&priv_hex, &pkg.wasm_bytes, &pkg.manifest_json)
+            .unwrap();
         let signed = add_signature_to_osp(&osp, &sig).unwrap();
         let signed_pkg = app_store::osp::OspPackage::from_bytes(&signed).unwrap();
 

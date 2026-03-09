@@ -181,19 +181,13 @@ mod tests {
     #[test]
     fn extract_json_with_surrounding_text() {
         let input = r#"Here is my decision: {"actions":[],"reasoning":"ok"} hope that helps"#;
-        assert_eq!(
-            extract_json(input),
-            r#"{"actions":[],"reasoning":"ok"}"#
-        );
+        assert_eq!(extract_json(input), r#"{"actions":[],"reasoning":"ok"}"#);
     }
 
     #[test]
     fn extract_json_with_markdown_code_fence() {
         let input = "```json\n{\"actions\":[],\"reasoning\":\"ok\"}\n```";
-        assert_eq!(
-            extract_json(input),
-            r#"{"actions":[],"reasoning":"ok"}"#
-        );
+        assert_eq!(extract_json(input), r#"{"actions":[],"reasoning":"ok"}"#);
     }
 
     #[test]
@@ -294,4 +288,3 @@ This should help balance the system."#;
         assert_eq!(decision.actions.len(), 2);
     }
 }
-

@@ -195,9 +195,7 @@ impl NlTerminal {
             };
             let name = manifest["name"].as_str().unwrap_or("");
             // Match by name (case-insensitive substring)
-            if !app_name.is_empty()
-                && name.to_lowercase().contains(&app_name.to_lowercase())
-            {
+            if !app_name.is_empty() && name.to_lowercase().contains(&app_name.to_lowercase()) {
                 matched.push((path, manifest));
             } else if app_name.is_empty() {
                 // If no name specified, show all
@@ -277,18 +275,12 @@ impl NlTerminal {
             Ok(resp) => match resp.json().await {
                 Ok(v) => v,
                 Err(e) => {
-                    eprintln!(
-                        "  → Failed to parse store response: {}",
-                        e
-                    );
+                    eprintln!("  → Failed to parse store response: {}", e);
                     return;
                 }
             },
             Err(e) => {
-                eprintln!(
-                    "  → Could not connect to app store at {}: {}",
-                    store_url, e
-                );
+                eprintln!("  → Could not connect to app store at {}: {}", store_url, e);
                 println!("    Make sure the app store server is running.");
                 return;
             }

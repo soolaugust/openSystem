@@ -34,9 +34,7 @@ async fn mock_llm_returns_valid_decision() {
 
     Mock::given(method("POST"))
         .and(path("/chat/completions"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(make_chat_response(decision_json)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(make_chat_response(decision_json)))
         .mount(&server)
         .await;
 
@@ -154,9 +152,7 @@ async fn mock_llm_returns_markdown_wrapped_json() {
 
     Mock::given(method("POST"))
         .and(path("/chat/completions"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(make_chat_response(content)),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(make_chat_response(content)))
         .mount(&server)
         .await;
 

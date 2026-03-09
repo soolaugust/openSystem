@@ -32,10 +32,7 @@ async fn install_app_flow(
     }
 
     let app = &apps[0];
-    let id = app["id"]
-        .as_str()
-        .ok_or("missing id")?
-        .to_string();
+    let id = app["id"].as_str().ok_or("missing id")?.to_string();
     let name = app["name"].as_str().unwrap_or("unknown");
     let version = app["version"].as_str().unwrap_or("?");
 
@@ -192,8 +189,12 @@ async fn test_search_query_param_encoding() {
         .mount(&mock_server)
         .await;
 
-    let result =
-        install_app_flow(&mock_server.uri(), "hello world&foo=bar", install_dir.path()).await;
+    let result = install_app_flow(
+        &mock_server.uri(),
+        "hello world&foo=bar",
+        install_dir.path(),
+    )
+    .await;
     assert!(result.is_ok(), "URL encoding failed: {:?}", result);
 }
 
@@ -232,10 +233,12 @@ async fn test_search_missing_id_field() {
 
     Mock::given(method("GET"))
         .and(path("/api/apps/search"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([{
-            "name": "no-id-app",
-            "version": "1.0.0"
-        }])))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                "name": "no-id-app",
+                "version": "1.0.0"
+            }])),
+        )
         .mount(&mock_server)
         .await;
 
@@ -248,8 +251,7 @@ async fn test_search_missing_id_field() {
 async fn test_unreachable_store() {
     let install_dir = TempDir::new().unwrap();
     // Use a port that's (almost certainly) not listening
-    let result =
-        install_app_flow("http://127.0.0.1:19999", "anything", install_dir.path()).await;
+    let result = install_app_flow("http://127.0.0.1:19999", "anything", install_dir.path()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("search request failed"));
 }

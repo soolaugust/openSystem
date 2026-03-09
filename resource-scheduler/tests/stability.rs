@@ -8,10 +8,7 @@ use resource_scheduler::types::{CgroupMetrics, DecisionResponse, ResourceAction,
 
 /// Simulate a single decision tick: build snapshot, serialize, parse response,
 /// validate actions. Returns the number of actions produced.
-fn simulate_decision_tick(
-    tick: u64,
-    metrics: &[CgroupMetrics],
-) -> usize {
+fn simulate_decision_tick(tick: u64, metrics: &[CgroupMetrics]) -> usize {
     // 1. Build snapshot (same as AiDecisionLoop.decision_tick)
     let snapshot = SystemSnapshot {
         metrics: metrics.to_vec(),
@@ -50,7 +47,11 @@ fn simulate_llm_decision(tick: u64, metrics: &[CgroupMetrics]) -> DecisionRespon
             }
             1 => {
                 // CPU adjustment
-                let weight = if m.cpu_usage_percent > 50.0 { 500 } else { 2048 };
+                let weight = if m.cpu_usage_percent > 50.0 {
+                    500
+                } else {
+                    2048
+                };
                 actions.push(ResourceAction::SetCpuWeight {
                     app: m.app_id.clone(),
                     weight,
@@ -133,7 +134,10 @@ fn stability_720_ticks_single_app() {
         total_actions += simulate_decision_tick(tick, &metrics);
     }
     // 720 ticks × at least 1 action each = at least 720
-    assert!(total_actions >= 720, "Expected >= 720 actions, got {total_actions}");
+    assert!(
+        total_actions >= 720,
+        "Expected >= 720 actions, got {total_actions}"
+    );
 }
 
 #[test]
@@ -146,7 +150,10 @@ fn stability_720_ticks_multiple_apps() {
         total_actions += simulate_decision_tick(tick, &metrics);
     }
     // At least 720 ticks with at least 1 app each
-    assert!(total_actions >= 720, "Expected >= 720 actions, got {total_actions}");
+    assert!(
+        total_actions >= 720,
+        "Expected >= 720 actions, got {total_actions}"
+    );
 }
 
 #[test]

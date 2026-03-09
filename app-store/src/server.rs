@@ -342,11 +342,7 @@ mod tests {
     }
 
     /// Upload an app and return the response JSON.
-    async fn upload_app_helper(
-        app: &Router,
-        name: &str,
-        version: &str,
-    ) -> serde_json::Value {
+    async fn upload_app_helper(app: &Router, name: &str, version: &str) -> serde_json::Value {
         let osp = make_osp_bytes(name, version);
         let (boundary, body) = build_multipart_upload(&osp);
         let req = Request::builder()

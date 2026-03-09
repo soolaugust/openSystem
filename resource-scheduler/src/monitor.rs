@@ -202,14 +202,23 @@ mod tests {
             Self { _dir: dir, root }
         }
 
-        fn add_app(&self, app_id: &str, cpu_usec: u64, mem_current: u64, mem_max: &str, io_stat: &str, pids: u32) {
+        fn add_app(
+            &self,
+            app_id: &str,
+            cpu_usec: u64,
+            mem_current: u64,
+            mem_max: &str,
+            io_stat: &str,
+            pids: u32,
+        ) {
             let app_dir = self.root.join("opensystem.slice").join(app_id);
             std::fs::create_dir_all(&app_dir).unwrap();
 
             std::fs::write(
                 app_dir.join("cpu.stat"),
                 format!("usage_usec {cpu_usec}\nuser_usec 0\nsystem_usec 0\n"),
-            ).unwrap();
+            )
+            .unwrap();
 
             std::fs::write(app_dir.join("memory.current"), mem_current.to_string()).unwrap();
             std::fs::write(app_dir.join("memory.max"), mem_max).unwrap();
@@ -263,7 +272,8 @@ mod tests {
         std::fs::write(
             cgroup.join("cpu.stat"),
             "usage_usec 1000000\nuser_usec 600000\nsystem_usec 400000\n",
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(read_cpu_usec(cgroup).unwrap(), 1000000);
     }
 
@@ -288,7 +298,8 @@ mod tests {
         std::fs::write(
             dir.path().join("io.stat"),
             "8:0 rbytes=1024 wbytes=2048 rios=10 wios=20\n",
-        ).unwrap();
+        )
+        .unwrap();
         let (r, w) = read_io_bytes(dir.path()).unwrap();
         assert_eq!(r, 1024);
         assert_eq!(w, 2048);
@@ -300,7 +311,8 @@ mod tests {
         std::fs::write(
             dir.path().join("io.stat"),
             "8:0 rbytes=1000 wbytes=2000\n8:16 rbytes=500 wbytes=300\n",
-        ).unwrap();
+        )
+        .unwrap();
         let (r, w) = read_io_bytes(dir.path()).unwrap();
         assert_eq!(r, 1500); // sum of devices
         assert_eq!(w, 2300);
@@ -340,11 +352,11 @@ mod tests {
         let fake = FakeCgroup::new();
         fake.add_app(
             "test-app",
-            5000000,             // 5M usec CPU
-            256 * 1024 * 1024,   // 256 MB memory
-            "max",               // unlimited
+            5000000,           // 5M usec CPU
+            256 * 1024 * 1024, // 256 MB memory
+            "max",             // unlimited
             "8:0 rbytes=10240 wbytes=20480",
-            3,                   // 3 pids
+            3, // 3 pids
         );
 
         let monitor = fake.monitor();
@@ -375,7 +387,14 @@ mod tests {
     #[test]
     fn test_collect_delta_calculation() {
         let fake = FakeCgroup::new();
-        fake.add_app("delta-app", 1000000, 100 * 1024 * 1024, "max", "8:0 rbytes=0 wbytes=0", 1);
+        fake.add_app(
+            "delta-app",
+            1000000,
+            100 * 1024 * 1024,
+            "max",
+            "8:0 rbytes=0 wbytes=0",
+            1,
+        );
 
         let monitor = fake.monitor();
 
@@ -388,7 +407,8 @@ mod tests {
         std::fs::write(
             app_dir.join("cpu.stat"),
             "usage_usec 2000000\nuser_usec 0\nsystem_usec 0\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         // Second collection: should compute delta
         let m2 = monitor.collect().unwrap();
@@ -411,7 +431,14 @@ mod tests {
     fn test_collect_memory_limit_numeric() {
         let fake = FakeCgroup::new();
         let limit_bytes = 512 * 1024 * 1024u64; // 512 MB
-        fake.add_app("limited", 0, 100 * 1024 * 1024, &limit_bytes.to_string(), "", 1);
+        fake.add_app(
+            "limited",
+            0,
+            100 * 1024 * 1024,
+            &limit_bytes.to_string(),
+            "",
+            1,
+        );
 
         let monitor = fake.monitor();
         let metrics = monitor.collect().unwrap();

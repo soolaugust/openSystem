@@ -32,3 +32,4 @@ __pycache__/
 
 # 日志
 *.log
+docs/iteration/

@@ -415,6 +415,22 @@ mod tests {
     }
 
     #[test]
+    fn add_signature_to_osp_empty_sig() {
+        let osp = sample_osp();
+        let signed = add_signature_to_osp(&osp, "").unwrap();
+        let pkg = app_store::osp::OspPackage::from_bytes(&signed).unwrap();
+        let sig_content = String::from_utf8(pkg.signature.unwrap()).unwrap();
+        assert_eq!(sig_content, "");
+    }
+
+    #[test]
+    fn resolve_private_key_cli_empty_string() {
+        // An empty CLI string is still Some, so it should be returned as-is
+        let result = resolve_private_key(Some(String::new())).unwrap();
+        assert_eq!(result, Some(String::new()));
+    }
+
+    #[test]
     fn add_signature_with_real_ed25519_key() {
         let (priv_hex, pub_hex) = app_store::signing::generate_keypair();
         let osp = sample_osp();

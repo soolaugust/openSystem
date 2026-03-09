@@ -182,4 +182,55 @@ mod tests {
         assert!((parsed.cpu_usage_percent - 45.5).abs() < f32::EPSILON);
         assert_eq!(parsed.memory_used_mb, 256);
     }
+
+    #[test]
+    fn test_resource_action_noop_json() {
+        let action = ResourceAction::NoOp;
+        let json = serde_json::to_string(&action).unwrap();
+        assert!(json.contains("\"type\":\"no_op\""));
+        let parsed: ResourceAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, ResourceAction::NoOp);
+    }
+
+    #[test]
+    fn test_resource_action_kill_app_json_format() {
+        let action = ResourceAction::KillApp {
+            app: "runaway".to_string(),
+            reason: "OOM killer triggered".to_string(),
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        assert!(json.contains("\"type\":\"kill_app\""));
+        assert!(json.contains("\"reason\":\"OOM killer triggered\""));
+    }
+
+    #[test]
+    fn test_decision_response_empty_actions() {
+        let resp = DecisionResponse {
+            actions: vec![],
+            reasoning: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: DecisionResponse = serde_json::from_str(&json).unwrap();
+        assert!(parsed.actions.is_empty());
+        assert!(parsed.reasoning.is_none());
+    }
+
+    #[test]
+    fn test_system_snapshot_with_metrics() {
+        let m = CgroupMetrics {
+            app_id: "app-1".to_string(),
+            cpu_usage_percent: 10.0,
+            memory_used_mb: 128,
+            memory_limit_mb: 256,
+            io_read_kb_s: 0,
+            io_write_kb_s: 0,
+            net_rx_kb_s: 0,
+            net_tx_kb_s: 0,
+            pid_count: 1,
+            timestamp_ms: 0,
+        };
+        let snapshot = SystemSnapshot::now(vec![m]);
+        assert_eq!(snapshot.metrics.len(), 1);
+        assert_eq!(snapshot.metrics[0].app_id, "app-1");
+    }
 }

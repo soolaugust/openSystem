@@ -1,7 +1,7 @@
 {
-  "round": 4,
-  "current_version": "v0.3.0",
-  "next_target": "v0.5.0",
+  "round": 5,
+  "current_version": "v0.5.0",
+  "next_target": "v1.0.0",
   "status": "coded",
   "last_updated": "2026-03-09",
   "backlog": [],
@@ -24,12 +24,13 @@
     "os-agent → app-store 集成测试：wiremock mock store search+download (8 tests)",
     "os-agent 覆盖率提升：config/ai_client 单元测试 (18 tests)",
     "修复 clippy items_after_test_module：app_generator.rs default_icon 移至 tests 前",
-    "QEMU demo 文档更新：4 语言 README 添加 virtio/端口转发/GUI 参数"
+    "QEMU demo 文档更新：4 语言 README 添加 virtio/端口转发/GUI 参数",
+    "覆盖率推送：manifest/signing/types/osctl 新增 14 个单元测试 (58% → 62%)"
   ],
   "metrics": {
-    "test_count": 197,
+    "test_count": 221,
     "clippy_warnings": 0,
-    "test_coverage_pct": 58
+    "test_coverage_pct": 62
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

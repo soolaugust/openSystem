@@ -1,0 +1,13 @@
+{
+  "board": "qemu_x86_64",
+  "cpu": "qemu64",
+  "ram_mb": 8192,
+  "storage": [
+    {"type": "virtio-blk", "size_mb": 16384}
+  ],
+  "network": [
+    {"type": "virtio-net", "driver": "virtio_net"}
+  ],
+  "display": "virtio-gpu",
+  "input": ["virtio-keyboard", "virtio-mouse"]
+}

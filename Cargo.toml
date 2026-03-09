@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "os-agent",
+    "os-syscall-bindings",
+    "gui-renderer",
+    "resource-scheduler",
+    "app-store",
+    "osctl",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"

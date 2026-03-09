@@ -1,0 +1,34 @@
+.worktrees/
+/target/
+*.osp
+*.img
+__pycache__/
+*.pyc
+*.conf
+*.env
+*.key
+*.pem
+.env*
+
+# SQLite 数据库（app-store registry 运行时产物）
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# BPF 编译产物
+*.o
+*.skel.h
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# 日志
+*.log

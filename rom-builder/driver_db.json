@@ -1,0 +1,87 @@
+{
+  "_comment": "Hardware driver database: maps hardware identifiers to kernel modules and kconfig options",
+  "storage": {
+    "virtio-blk": {
+      "module": "virtio_blk",
+      "kconfig": "CONFIG_VIRTIO_BLK=y",
+      "arch": ["x86_64", "aarch64", "riscv64"]
+    },
+    "nvme": {
+      "module": "nvme",
+      "kconfig": "CONFIG_BLK_DEV_NVME=y",
+      "arch": ["x86_64", "aarch64"]
+    },
+    "sata-ahci": {
+      "module": "ahci",
+      "kconfig": "CONFIG_SATA_AHCI=y",
+      "arch": ["x86_64"]
+    },
+    "mmc": {
+      "module": "mmc_block",
+      "kconfig": "CONFIG_MMC=y\nCONFIG_MMC_BLOCK=y",
+      "arch": ["aarch64", "riscv64"]
+    }
+  },
+  "network": {
+    "virtio-net": {
+      "module": "virtio_net",
+      "kconfig": "CONFIG_VIRTIO_NET=y",
+      "arch": ["x86_64", "aarch64", "riscv64"]
+    },
+    "e1000e": {
+      "module": "e1000e",
+      "kconfig": "CONFIG_E1000E=y",
+      "arch": ["x86_64"]
+    },
+    "bcmgenet": {
+      "module": "bcmgenet",
+      "kconfig": "CONFIG_BCMGENET=y",
+      "arch": ["aarch64"]
+    },
+    "dwmac-rk": {
+      "module": "dwmac_rk",
+      "kconfig": "CONFIG_DWMAC_ROCKCHIP=y",
+      "arch": ["aarch64"]
+    }
+  },
+  "display": {
+    "virtio-gpu": {
+      "module": "virtio_gpu",
+      "kconfig": "CONFIG_DRM_VIRTIO_GPU=y",
+      "arch": ["x86_64", "aarch64"]
+    },
+    "vc4": {
+      "module": "vc4",
+      "kconfig": "CONFIG_DRM_VC4=y",
+      "arch": ["aarch64"]
+    },
+    "simple-framebuffer": {
+      "module": "",
+      "kconfig": "CONFIG_FB_SIMPLE=y\nCONFIG_DRM=y",
+      "arch": ["x86_64", "aarch64", "riscv64"]
+    }
+  },
+  "input": {
+    "virtio-keyboard": {
+      "module": "virtio_input",
+      "kconfig": "CONFIG_VIRTIO_INPUT=y",
+      "arch": ["x86_64", "aarch64", "riscv64"]
+    },
+    "virtio-mouse": {
+      "module": "virtio_input",
+      "kconfig": "CONFIG_VIRTIO_INPUT=y",
+      "arch": ["x86_64", "aarch64", "riscv64"]
+    },
+    "usbhid": {
+      "module": "usbhid",
+      "kconfig": "CONFIG_HID_GENERIC=y\nCONFIG_USB_HID=y",
+      "arch": ["x86_64", "aarch64"]
+    }
+  },
+  "base": {
+    "always": {
+      "_comment": "Always-included base config for all AIOS builds",
+      "kconfig": "CONFIG_64BIT=y\nCONFIG_SMP=y\nCONFIG_CGROUPS=y\nCONFIG_CGROUP_SCHED=y\nCONFIG_BPF_SYSCALL=y\nCONFIG_BPF_JIT=y\nCONFIG_SCHED_CLASS_EXT=y\nCONFIG_IO_URING=y\nCONFIG_SQUASHFS=y\nCONFIG_EXT4_FS=y\nCONFIG_VFAT_FS=y\nCONFIG_EFI=y\nCONFIG_OVERLAY_FS=y"
+    }
+  }
+}

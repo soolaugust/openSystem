@@ -1,0 +1,49 @@
+name: RFC (Design Discussion)
+description: Propose a design decision or architectural change
+labels: ["rfc", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        RFCs are the primary contribution mechanism for AIOS.
+        Great RFC authors become maintainers.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One paragraph describing the proposal.
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      placeholder: Why is this needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Detailed Design
+      placeholder: How exactly would this work? Include API changes, data formats, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      placeholder: What other approaches did you consider, and why did you reject them?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Known Tradeoffs
+      placeholder: What does this proposal give up? Be honest.
+    validations:
+      required: true

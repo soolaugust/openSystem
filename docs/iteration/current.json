@@ -1,7 +1,7 @@
 {
-  "round": 2,
-  "current_version": "v0.1.0",
-  "next_target": "v0.2.0",
+  "round": 3,
+  "current_version": "v0.2.0",
+  "next_target": "v0.3.0",
   "status": "coded",
   "last_updated": "2026-03-09",
   "backlog": [],
@@ -14,12 +14,17 @@
     "osctl 单元测试：resolve_private_key + add_signature_to_osp (9 tests)",
     "app-store HTTP 集成测试：upload/search/get/download (9 tests)",
     "Ed25519 端到端签名测试：sign/upload/verify/tamper (7 tests)",
-    "修复 URL 注入：osctl cmd_install/cmd_list 和 os-agent handle_install_app 使用 .query()"
+    "修复 URL 注入：osctl cmd_install/cmd_list 和 os-agent handle_install_app 使用 .query()",
+    "AI decision loop 集成测试：wiremock mock LLM + extract_json 单元测试 (18 tests)",
+    "eBPF 构建系统：libbpf-cargo feature flag + build.rs",
+    "CgroupMonitor 单元测试：fake cgroup filesystem (17 tests)",
+    "消除 resource-scheduler 生产代码 unwrap/expect",
+    "稳定性测试框架：720 tick 压力测试 (3 ignored + 1 sanity)"
   ],
   "metrics": {
-    "test_count": 122,
+    "test_count": 158,
     "clippy_warnings": 0,
-    "test_coverage_pct": 40
+    "test_coverage_pct": 50
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

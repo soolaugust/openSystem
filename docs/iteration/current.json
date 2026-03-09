@@ -1,7 +1,7 @@
 {
-  "round": 3,
-  "current_version": "v0.2.0",
-  "next_target": "v0.3.0",
+  "round": 4,
+  "current_version": "v0.3.0",
+  "next_target": "v0.5.0",
   "status": "coded",
   "last_updated": "2026-03-09",
   "backlog": [],
@@ -19,12 +19,17 @@
     "eBPF 构建系统：libbpf-cargo feature flag + build.rs",
     "CgroupMonitor 单元测试：fake cgroup filesystem (17 tests)",
     "消除 resource-scheduler 生产代码 unwrap/expect",
-    "稳定性测试框架：720 tick 压力测试 (3 ignored + 1 sanity)"
+    "稳定性测试框架：720 tick 压力测试 (3 ignored + 1 sanity)",
+    "os-syscall-bindings 单元测试：Widget/UISpec/UIDiff/Notification serde roundtrip (13 tests)",
+    "os-agent → app-store 集成测试：wiremock mock store search+download (8 tests)",
+    "os-agent 覆盖率提升：config/ai_client 单元测试 (18 tests)",
+    "修复 clippy items_after_test_module：app_generator.rs default_icon 移至 tests 前",
+    "QEMU demo 文档更新：4 语言 README 添加 virtio/端口转发/GUI 参数"
   ],
   "metrics": {
-    "test_count": 158,
+    "test_count": 197,
     "clippy_warnings": 0,
-    "test_coverage_pct": 50
+    "test_coverage_pct": 58
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

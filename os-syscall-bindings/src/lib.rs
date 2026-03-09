@@ -326,6 +326,249 @@ pub mod notify {
     }
 }
 
+// ─── tests ──────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::types::*;
+
+    // ── Widget serde roundtrip tests ─────────────────────────────────────
+
+    #[test]
+    fn test_widget_text_serde_roundtrip() {
+        let widget = Widget::Text {
+            content: "Hello openSystem".to_string(),
+            style: Some(TextStyle {
+                font_size: Some(16),
+                color: Some("#ff0000".to_string()),
+                bold: Some(true),
+            }),
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        // Verify tagged enum uses snake_case
+        assert!(json.contains("\"type\":\"text\""));
+        match parsed {
+            Widget::Text { content, style } => {
+                assert_eq!(content, "Hello openSystem");
+                let s = style.unwrap();
+                assert_eq!(s.font_size, Some(16));
+                assert_eq!(s.color.as_deref(), Some("#ff0000"));
+                assert_eq!(s.bold, Some(true));
+            }
+            _ => panic!("Expected Text widget"),
+        }
+    }
+
+    #[test]
+    fn test_widget_button_serde_roundtrip() {
+        let widget = Widget::Button {
+            label: "Click me".to_string(),
+            action: "on_click".to_string(),
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        assert!(json.contains("\"type\":\"button\""));
+        match parsed {
+            Widget::Button { label, action } => {
+                assert_eq!(label, "Click me");
+                assert_eq!(action, "on_click");
+            }
+            _ => panic!("Expected Button widget"),
+        }
+    }
+
+    #[test]
+    fn test_widget_vstack_nested_serde_roundtrip() {
+        let widget = Widget::VStack {
+            gap: Some(8),
+            padding: Some(16),
+            children: vec![
+                Widget::Text {
+                    content: "Title".to_string(),
+                    style: None,
+                },
+                Widget::Button {
+                    label: "OK".to_string(),
+                    action: "confirm".to_string(),
+                },
+            ],
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        assert!(json.contains("\"type\":\"v_stack\""));
+        match parsed {
+            Widget::VStack {
+                gap,
+                padding,
+                children,
+            } => {
+                assert_eq!(gap, Some(8));
+                assert_eq!(padding, Some(16));
+                assert_eq!(children.len(), 2);
+            }
+            _ => panic!("Expected VStack widget"),
+        }
+    }
+
+    #[test]
+    fn test_widget_hstack_serde_roundtrip() {
+        let widget = Widget::HStack {
+            gap: Some(4),
+            children: vec![Widget::Input {
+                placeholder: Some("Type here...".to_string()),
+                on_change: Some("handle_change".to_string()),
+            }],
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        assert!(json.contains("\"type\":\"h_stack\""));
+        match parsed {
+            Widget::HStack { gap, children } => {
+                assert_eq!(gap, Some(4));
+                assert_eq!(children.len(), 1);
+            }
+            _ => panic!("Expected HStack widget"),
+        }
+    }
+
+    #[test]
+    fn test_widget_input_optional_fields() {
+        let widget = Widget::Input {
+            placeholder: None,
+            on_change: None,
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        assert!(json.contains("\"type\":\"input\""));
+        match parsed {
+            Widget::Input {
+                placeholder,
+                on_change,
+            } => {
+                assert!(placeholder.is_none());
+                assert!(on_change.is_none());
+            }
+            _ => panic!("Expected Input widget"),
+        }
+    }
+
+    // ── UISpec / UIDiff / Notification serde roundtrip ────────────────────
+
+    #[test]
+    fn test_uispec_serde_roundtrip() {
+        let spec = UISpec {
+            layout: Widget::VStack {
+                gap: None,
+                padding: None,
+                children: vec![Widget::Text {
+                    content: "Hello".to_string(),
+                    style: None,
+                }],
+            },
+        };
+        let json = serde_json::to_string(&spec).unwrap();
+        let parsed: UISpec = serde_json::from_str(&json).unwrap();
+        match parsed.layout {
+            Widget::VStack { children, .. } => assert_eq!(children.len(), 1),
+            _ => panic!("Expected VStack layout"),
+        }
+    }
+
+    #[test]
+    fn test_uidiff_serde_roundtrip() {
+        let diff = UIDiff {
+            updates: vec![(
+                "widget-1".to_string(),
+                Widget::Text {
+                    content: "Updated".to_string(),
+                    style: None,
+                },
+            )],
+        };
+        let json = serde_json::to_string(&diff).unwrap();
+        let parsed: UIDiff = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.updates.len(), 1);
+        assert_eq!(parsed.updates[0].0, "widget-1");
+    }
+
+    #[test]
+    fn test_notification_serde_roundtrip() {
+        let notif = Notification {
+            title: "Alert".to_string(),
+            body: "Something happened".to_string(),
+        };
+        let json = serde_json::to_string(&notif).unwrap();
+        let parsed: Notification = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.title, "Alert");
+        assert_eq!(parsed.body, "Something happened");
+    }
+
+    // ── TextStyle defaults ───────────────────────────────────────────────
+
+    #[test]
+    fn test_text_style_default() {
+        let style = TextStyle::default();
+        assert!(style.font_size.is_none());
+        assert!(style.color.is_none());
+        assert!(style.bold.is_none());
+        // Roundtrip the default
+        let json = serde_json::to_string(&style).unwrap();
+        let parsed: TextStyle = serde_json::from_str(&json).unwrap();
+        assert!(parsed.font_size.is_none());
+    }
+
+    // ── RenderHandle serde ───────────────────────────────────────────────
+
+    #[test]
+    fn test_render_handle_serde_roundtrip() {
+        let handle = RenderHandle(42);
+        let json = serde_json::to_string(&handle).unwrap();
+        let parsed: RenderHandle = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.0, 42);
+    }
+
+    // ── SyscallError Display ─────────────────────────────────────────────
+
+    #[test]
+    fn test_syscall_error_display() {
+        let net_err = SyscallError::Net("timeout".to_string());
+        assert_eq!(net_err.to_string(), "net error: timeout");
+
+        let storage_err = SyscallError::Storage("disk full".to_string());
+        assert_eq!(storage_err.to_string(), "storage error: disk full");
+
+        let perm_err = SyscallError::PermissionDenied("no net access".to_string());
+        assert_eq!(perm_err.to_string(), "permission denied: no net access");
+
+        let serde_err: Result<Widget, _> = serde_json::from_str("invalid");
+        let err = SyscallError::from(serde_err.unwrap_err());
+        assert!(err.to_string().starts_with("serialization error:"));
+    }
+
+    // ── Deserialization from raw JSON ────────────────────────────────────
+
+    #[test]
+    fn test_widget_deserialize_from_json_literal() {
+        let json = r#"{"type":"button","label":"Go","action":"navigate"}"#;
+        let widget: Widget = serde_json::from_str(json).unwrap();
+        match widget {
+            Widget::Button { label, action } => {
+                assert_eq!(label, "Go");
+                assert_eq!(action, "navigate");
+            }
+            _ => panic!("Expected Button"),
+        }
+    }
+
+    #[test]
+    fn test_widget_rejects_unknown_type() {
+        let json = r#"{"type":"slider","value":50}"#;
+        let result: Result<Widget, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+    }
+}
+
 // ─── net ─────────────────────────────────────────────────────────────────────
 
 pub mod net {

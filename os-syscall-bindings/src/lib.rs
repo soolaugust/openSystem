@@ -82,16 +82,17 @@ pub mod ui {
     use super::types::*;
 
     /// Render a full UI spec and return an opaque handle.
-    pub fn render(spec: &UISpec) -> RenderHandle {
-        let json = serde_json::to_string(spec).expect("UISpec serialization failed");
+    pub fn render(spec: &UISpec) -> Result<RenderHandle, super::types::SyscallError> {
+        let json = serde_json::to_string(spec)?;
         let handle_id = host::ui_render(json.as_ptr(), json.len());
-        RenderHandle(handle_id)
+        Ok(RenderHandle(handle_id))
     }
 
     /// Apply an incremental diff to a previously rendered handle.
-    pub fn update(handle: &RenderHandle, diff: &UIDiff) {
-        let json = serde_json::to_string(diff).expect("UIDiff serialization failed");
+    pub fn update(handle: &RenderHandle, diff: &UIDiff) -> Result<(), super::types::SyscallError> {
+        let json = serde_json::to_string(diff)?;
         host::ui_update(handle.0, json.as_ptr(), json.len());
+        Ok(())
     }
 
     mod host {
@@ -113,12 +114,12 @@ pub mod ui {
 
         #[cfg(not(target_arch = "wasm32"))]
         pub fn ui_render(_ptr: *const u8, _len: usize) -> u64 {
-            panic!("os-syscall-bindings: ui_render is only available on wasm32")
+            0 // stub: no-op on non-wasm32
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         pub fn ui_update(_handle: u64, _ptr: *const u8, _len: usize) {
-            panic!("os-syscall-bindings: ui_update is only available on wasm32")
+            // stub: no-op on non-wasm32
         }
     }
 }
@@ -136,7 +137,10 @@ pub mod timer {
     /// Register a repeating timer. `callback` is called every `ms` milliseconds.
     /// Returns a timer id that can be passed to [`clear`].
     pub fn set_interval(ms: u64, callback: impl Fn() + Send + 'static) -> u64 {
-        let mut cbs = CALLBACKS.lock().unwrap();
+        let mut cbs = match CALLBACKS.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         // Reuse a freed slot when possible; otherwise extend the Vec.
         let idx = cbs.iter().position(|s| s.is_none()).unwrap_or_else(|| {
             cbs.push(None);
@@ -198,13 +202,13 @@ pub mod timer {
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
         pub fn timer_set_interval(_ms: u64, _idx: u64) -> u64 {
-            panic!("os-syscall-bindings: timer_set_interval is only available on wasm32")
+            0 // stub: no-op on non-wasm32
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         #[allow(dead_code)]
         pub fn timer_clear(_timer_id: u64) {
-            panic!("os-syscall-bindings: timer_clear is only available on wasm32")
+            // stub: no-op on non-wasm32
         }
     }
 }
@@ -270,7 +274,7 @@ pub mod storage {
 
         #[cfg(not(target_arch = "wasm32"))]
         pub fn storage_read(_key_ptr: *const u8, _key_len: usize, _out_len: *mut u32) -> *const u8 {
-            panic!("os-syscall-bindings: storage_read is only available on wasm32")
+            std::ptr::null() // stub: key not found on non-wasm32
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -280,7 +284,7 @@ pub mod storage {
             _val_ptr: *const u8,
             _val_len: usize,
         ) -> i32 {
-            panic!("os-syscall-bindings: storage_write is only available on wasm32")
+            0 // stub: write failure on non-wasm32
         }
     }
 }
@@ -321,7 +325,7 @@ pub mod notify {
             _body_ptr: *const u8,
             _body_len: usize,
         ) {
-            panic!("os-syscall-bindings: notify_send is only available on wasm32")
+            // stub: no-op on non-wasm32
         }
     }
 }
@@ -632,7 +636,7 @@ pub mod net {
             _out_len: *mut u32,
             _err_len: *mut u32,
         ) -> *const u8 {
-            panic!("os-syscall-bindings: net_http_get is only available on wasm32")
+            std::ptr::null() // stub: no network on non-wasm32
         }
     }
 }

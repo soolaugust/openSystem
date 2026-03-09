@@ -115,13 +115,12 @@ pub enum Renderer {
 }
 
 impl Renderer {
-    /// Auto-detect best available renderer
-    pub fn auto_detect(width: u32, height: u32) -> Self {
+    /// Auto-detect best available renderer.
+    /// Returns an error if the given dimensions are invalid (zero width or height).
+    pub fn auto_detect(width: u32, height: u32) -> anyhow::Result<Self> {
         // TODO: Try to initialize BevyRenderer with GPU; fall back to SoftwareRenderer
         // For now, always use software renderer (safe default)
         tracing::info!("Renderer::auto_detect — using SoftwareRenderer (GPU detection TODO)");
-        Renderer::Software(
-            SoftwareRenderer::new(width, height).expect("Valid dimensions provided to auto_detect"),
-        )
+        Ok(Renderer::Software(SoftwareRenderer::new(width, height)?))
     }
 }

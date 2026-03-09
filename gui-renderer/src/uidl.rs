@@ -113,9 +113,13 @@ impl UidlDocument {
         serde_json::from_str(json).map_err(|e| anyhow::anyhow!("UIDL parse error: {}", e))
     }
 
-    /// Compute SHA256 hash of the UIDL document (for caching)
+    /// Compute SHA256 hash of the UIDL document (for caching).
+    /// Returns an empty string if serialization fails (should never occur in practice).
     pub fn hash(&self) -> String {
-        let json = serde_json::to_string(self).expect("UidlDocument is always serializable");
+        let json = match serde_json::to_string(self) {
+            Ok(s) => s,
+            Err(_) => return String::new(),
+        };
         let mut hasher = Sha256::new();
         hasher.update(json.as_bytes());
         hex::encode(hasher.finalize())

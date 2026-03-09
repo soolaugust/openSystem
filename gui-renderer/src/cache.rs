@@ -28,7 +28,10 @@ impl UidlCache {
     }
 
     pub fn get(&self, key: &str) -> Option<UidlDocument> {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = match self.entries.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         if let Some(entry) = entries.get_mut(key) {
             entry.last_accessed = Instant::now();
             Some(entry.document.clone())
@@ -38,7 +41,10 @@ impl UidlCache {
     }
 
     pub fn insert(&self, key: CacheKey, document: UidlDocument) {
-        let mut entries = self.entries.lock().unwrap();
+        let mut entries = match self.entries.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         // Evict least-recently-accessed if at capacity
         if entries.len() >= self.max_entries {
             let lru_key = entries
@@ -59,15 +65,28 @@ impl UidlCache {
     }
 
     pub fn invalidate(&self, key: &str) {
-        self.entries.lock().unwrap().remove(key);
+        match self.entries.lock() {
+            Ok(mut guard) => {
+                guard.remove(key);
+            }
+            Err(poisoned) => {
+                poisoned.into_inner().remove(key);
+            }
+        }
     }
 
     pub fn clear(&self) {
-        self.entries.lock().unwrap().clear();
+        match self.entries.lock() {
+            Ok(mut guard) => guard.clear(),
+            Err(poisoned) => poisoned.into_inner().clear(),
+        }
     }
 
     pub fn len(&self) -> usize {
-        self.entries.lock().unwrap().len()
+        match self.entries.lock() {
+            Ok(guard) => guard.len(),
+            Err(poisoned) => poisoned.into_inner().len(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {

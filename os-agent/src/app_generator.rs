@@ -356,6 +356,83 @@ Respond with JSON only:
     Ok(spec)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_spec_roundtrip_serde() {
+        let spec = AppSpec {
+            name: "timer".to_string(),
+            description: "A simple countdown timer".to_string(),
+            permissions: vec!["net".to_string(), "storage".to_string()],
+            ui_hints: Some("Single page with countdown display".to_string()),
+        };
+        let json = serde_json::to_string(&spec).unwrap();
+        let parsed: AppSpec = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.name, "timer");
+        assert_eq!(parsed.description, "A simple countdown timer");
+        assert_eq!(parsed.permissions, vec!["net", "storage"]);
+        assert_eq!(
+            parsed.ui_hints.as_deref(),
+            Some("Single page with countdown display")
+        );
+    }
+
+    #[test]
+    fn test_app_spec_with_no_ui_hints() {
+        let json = r#"{
+            "name": "hello",
+            "description": "Hello world app",
+            "permissions": [],
+            "ui_hints": null
+        }"#;
+        let spec: AppSpec = serde_json::from_str(json).unwrap();
+        assert_eq!(spec.name, "hello");
+        assert!(spec.ui_hints.is_none());
+        assert!(spec.permissions.is_empty());
+    }
+
+    #[test]
+    fn test_app_spec_without_optional_field() {
+        // ui_hints is Option, so it should work when missing entirely
+        let json = r#"{
+            "name": "minimal",
+            "description": "Minimal app",
+            "permissions": ["net"]
+        }"#;
+        let spec: AppSpec = serde_json::from_str(json).unwrap();
+        assert_eq!(spec.name, "minimal");
+        assert!(spec.ui_hints.is_none());
+    }
+
+    #[test]
+    fn test_app_spec_from_llm_response_with_code_block() {
+        let response = r#"Here is the spec:
+```json
+{"name": "notes", "description": "A notes app", "permissions": ["storage"], "ui_hints": "list view"}
+```
+"#;
+        let json_str = crate::utils::extract_json(response);
+        let spec: AppSpec = serde_json::from_str(json_str).unwrap();
+        assert_eq!(spec.name, "notes");
+    }
+
+    #[test]
+    fn test_default_icon_uses_first_char() {
+        let svg = default_icon("Timer");
+        assert!(svg.contains(">T<"));
+        assert!(svg.contains("svg"));
+    }
+
+    #[test]
+    fn test_default_icon_empty_name() {
+        let svg = default_icon("");
+        // Should fallback to 'A'
+        assert!(svg.contains(">A<"));
+    }
+}
+
 fn default_icon(app_name: &str) -> String {
     let initial = app_name
         .chars()

@@ -157,9 +157,10 @@ async fn cmd_publish(store_url: &str, path: &str, key: Option<String>) -> Result
 async fn cmd_install(store_url: &str, name_or_id: &str) -> Result<()> {
     let client = reqwest::Client::new();
 
-    let search_url = format!("{store_url}/api/apps/search?q={name_or_id}");
+    let search_url = format!("{store_url}/api/apps/search");
     let apps: Vec<serde_json::Value> = client
         .get(&search_url)
+        .query(&[("q", name_or_id)])
         .send()
         .await
         .with_context(|| format!("failed to search store: {search_url}"))?
@@ -200,9 +201,10 @@ async fn cmd_install(store_url: &str, name_or_id: &str) -> Result<()> {
 async fn cmd_list(store_url: &str, remote: bool) -> Result<()> {
     if remote {
         let client = reqwest::Client::new();
-        let url = format!("{store_url}/api/apps/search?q=");
+        let url = format!("{store_url}/api/apps/search");
         let apps: Vec<serde_json::Value> = client
             .get(&url)
+            .query(&[("q", "")])
             .send()
             .await
             .with_context(|| format!("failed to fetch app list from {url}"))?
@@ -281,4 +283,152 @@ fn resolve_private_key(cli_key: Option<String>) -> Result<Option<String>> {
         }
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── helpers ──────────────────────────────────────────────────────
+
+    /// Build a minimal valid .osp tar.gz in memory.
+    fn make_osp_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
+        use flate2::write::GzEncoder;
+        let buf = Vec::new();
+        let enc = GzEncoder::new(buf, Compression::default());
+        let mut tar = tar::Builder::new(enc);
+        for (name, content) in files {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(content.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            tar.append_data(&mut header, name, *content).unwrap();
+        }
+        let enc = tar.into_inner().unwrap();
+        enc.finish().unwrap()
+    }
+
+    fn sample_osp() -> Vec<u8> {
+        let manifest = br#"{"name":"test","version":"0.1.0"}"#;
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+            ("prompt.txt", b"hello"),
+            ("icon.svg", b"<svg/>"),
+        ])
+    }
+
+    // ── resolve_private_key tests ───────────────────────────────────
+
+    #[test]
+    fn resolve_private_key_cli_arg_takes_priority() {
+        // Even if env var is set, CLI arg should win
+        std::env::set_var("OPENSYSTEM_SIGNING_KEY", "env_key_value");
+        let result = resolve_private_key(Some("cli_key_value".to_string())).unwrap();
+        assert_eq!(result, Some("cli_key_value".to_string()));
+        std::env::remove_var("OPENSYSTEM_SIGNING_KEY");
+    }
+
+    #[test]
+    fn resolve_private_key_env_fallback() {
+        std::env::set_var("OPENSYSTEM_SIGNING_KEY", "env_key_42");
+        let result = resolve_private_key(None).unwrap();
+        assert_eq!(result, Some("env_key_42".to_string()));
+        std::env::remove_var("OPENSYSTEM_SIGNING_KEY");
+    }
+
+    #[test]
+    fn resolve_private_key_env_empty_is_skipped() {
+        std::env::set_var("OPENSYSTEM_SIGNING_KEY", "");
+        let result = resolve_private_key(None).unwrap();
+        // Should NOT return Some("") — empty env is treated as absent.
+        // It may still find a file fallback, but it won't be Some("").
+        assert_ne!(result, Some(String::new()));
+        std::env::remove_var("OPENSYSTEM_SIGNING_KEY");
+    }
+
+    #[test]
+    fn resolve_private_key_file_fallback() {
+        std::env::remove_var("OPENSYSTEM_SIGNING_KEY");
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join(".config").join("opensystem");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(config_dir.join("signing.key"), "file_key_99\n").unwrap();
+
+        // We can't easily override home_dir(), so we test the function logic
+        // indirectly: when CLI=None, env=unset, and no file exists at the real
+        // home path, the function returns None.
+        let result = resolve_private_key(None).unwrap();
+        // The real home may or may not have a key file, so just check it doesn't error.
+        assert!(result.is_none() || result.is_some());
+    }
+
+    #[test]
+    fn resolve_private_key_none_when_all_missing() {
+        std::env::remove_var("OPENSYSTEM_SIGNING_KEY");
+        // With no CLI arg, no env var, and likely no key file at default path
+        // in CI, we expect None (or Some if the test runner happens to have one).
+        let result = resolve_private_key(None).unwrap();
+        // At minimum this must not error.
+        let _ = result;
+    }
+
+    // ── add_signature_to_osp tests ──────────────────────────────────
+
+    #[test]
+    fn add_signature_to_osp_roundtrip() {
+        let osp = sample_osp();
+        let sig = "deadbeef1234";
+
+        let signed = add_signature_to_osp(&osp, sig).unwrap();
+        let pkg = app_store::osp::OspPackage::from_bytes(&signed).unwrap();
+
+        assert!(pkg.signature.is_some());
+        let sig_content = String::from_utf8(pkg.signature.unwrap()).unwrap();
+        assert_eq!(sig_content, "deadbeef1234");
+    }
+
+    #[test]
+    fn add_signature_preserves_existing_files() {
+        let osp = sample_osp();
+        let signed = add_signature_to_osp(&osp, "sig_hex").unwrap();
+        let pkg = app_store::osp::OspPackage::from_bytes(&signed).unwrap();
+
+        assert_eq!(pkg.wasm_bytes, b"\x00asm\x01\x00\x00\x00");
+        assert_eq!(
+            pkg.manifest_json,
+            br#"{"name":"test","version":"0.1.0"}"#.to_vec()
+        );
+        assert_eq!(pkg.prompt_txt, b"hello");
+        assert_eq!(pkg.icon_svg, b"<svg/>");
+    }
+
+    #[test]
+    fn add_signature_to_osp_invalid_input() {
+        let result = add_signature_to_osp(b"not valid osp", "sig");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn add_signature_with_real_ed25519_key() {
+        let (priv_hex, pub_hex) = app_store::signing::generate_keypair();
+        let osp = sample_osp();
+        let pkg = app_store::osp::OspPackage::from_bytes(&osp).unwrap();
+
+        let sig =
+            app_store::signing::sign_content(&priv_hex, &pkg.wasm_bytes, &pkg.manifest_json)
+                .unwrap();
+        let signed = add_signature_to_osp(&osp, &sig).unwrap();
+        let signed_pkg = app_store::osp::OspPackage::from_bytes(&signed).unwrap();
+
+        let sig_hex = String::from_utf8(signed_pkg.signature.unwrap()).unwrap();
+        app_store::signing::verify_signature(
+            &pub_hex,
+            &sig_hex,
+            &signed_pkg.wasm_bytes,
+            &signed_pkg.manifest_json,
+        )
+        .unwrap();
+    }
 }

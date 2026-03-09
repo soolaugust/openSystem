@@ -267,9 +267,13 @@ impl NlTerminal {
         println!("  → Searching store for '{}'...", app_name);
 
         let client = reqwest::Client::new();
-        let search_url = format!("{}/api/apps/search?q={}", store_url, app_name);
 
-        let apps: Vec<serde_json::Value> = match client.get(&search_url).send().await {
+        let apps: Vec<serde_json::Value> = match client
+            .get(format!("{}/api/apps/search", store_url))
+            .query(&[("q", app_name)])
+            .send()
+            .await
+        {
             Ok(resp) => match resp.json().await {
                 Ok(v) => v,
                 Err(e) => {

@@ -226,3 +226,54 @@ impl AiClient {
             .context("Empty response from Anthropic API")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_message_system() {
+        let msg = Message::system("You are a helpful assistant");
+        assert_eq!(msg.role, "system");
+        assert_eq!(msg.content, "You are a helpful assistant");
+    }
+
+    #[test]
+    fn test_message_user() {
+        let msg = Message::user("Hello");
+        assert_eq!(msg.role, "user");
+        assert_eq!(msg.content, "Hello");
+    }
+
+    #[test]
+    fn test_message_assistant() {
+        let msg = Message::assistant("Hi there");
+        assert_eq!(msg.role, "assistant");
+        assert_eq!(msg.content, "Hi there");
+    }
+
+    #[test]
+    fn test_message_serde_roundtrip() {
+        let msg = Message::user("test content");
+        let json = serde_json::to_string(&msg).unwrap();
+        let parsed: Message = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.role, "user");
+        assert_eq!(parsed.content, "test content");
+    }
+
+    #[test]
+    fn test_message_from_json_literal() {
+        let json = r#"{"role":"system","content":"be helpful"}"#;
+        let msg: Message = serde_json::from_str(json).unwrap();
+        assert_eq!(msg.role, "system");
+        assert_eq!(msg.content, "be helpful");
+    }
+
+    #[test]
+    fn test_message_clone() {
+        let msg = Message::user("original");
+        let cloned = msg.clone();
+        assert_eq!(cloned.role, msg.role);
+        assert_eq!(cloned.content, msg.content);
+    }
+}

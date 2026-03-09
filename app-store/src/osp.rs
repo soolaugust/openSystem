@@ -67,7 +67,6 @@ mod tests {
     use super::*;
     use flate2::write::GzEncoder;
     use flate2::Compression;
-    use std::io::Write;
     use tar::Builder;
 
     fn make_osp_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {

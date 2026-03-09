@@ -53,7 +53,7 @@ impl AiDecisionLoop {
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(15))
                 .build()
-                .expect("Failed to build HTTP client"),
+                .unwrap_or_default(),
         }
     }
 

@@ -75,7 +75,10 @@ impl CgroupMonitor {
         let pid_count = read_u64_file(&path.join("pids.current")).unwrap_or(0) as u32;
 
         // Calculate deltas against previous snapshot
-        let mut prev_snapshots = self.prev_snapshots.lock().unwrap();
+        let mut prev_snapshots = self
+            .prev_snapshots
+            .lock()
+            .map_err(|_| anyhow::anyhow!("prev_snapshots mutex poisoned"))?;
         let (cpu_pct, io_read_kbs, io_write_kbs) = if let Some(prev) = prev_snapshots.get(app_id) {
             let dt_ms = now_ms.saturating_sub(prev.timestamp_ms).max(1);
 

@@ -268,3 +268,279 @@ pub async fn download_app(
 
     Ok(response)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::Request;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    /// Build a test AppState with in-memory SQLite and a temp directory for .osp files.
+    fn test_state(dir: &std::path::Path) -> AppState {
+        let store_dir = dir.join("store");
+        std::fs::create_dir_all(&store_dir).unwrap();
+        let db_path = dir.join("test.db");
+        let registry = AppRegistry::new(&db_path, &store_dir).unwrap();
+        AppState {
+            registry: Arc::new(Mutex::new(registry)),
+            store_dir,
+        }
+    }
+
+    /// Build a minimal valid .osp tar.gz in memory.
+    fn make_osp_bytes(name: &str, version: &str) -> Vec<u8> {
+        use flate2::write::GzEncoder;
+        let manifest = serde_json::json!({
+            "name": name,
+            "version": version,
+            "description": format!("A test app called {name}"),
+            "permissions": ["net"]
+        });
+        let manifest_bytes = serde_json::to_vec(&manifest).unwrap();
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+
+        let buf = Vec::new();
+        let enc = GzEncoder::new(buf, flate2::Compression::default());
+        let mut tar = tar::Builder::new(enc);
+        for (fname, content) in [
+            ("app.wasm", wasm.as_slice()),
+            ("manifest.json", manifest_bytes.as_slice()),
+            ("prompt.txt", b"test prompt".as_slice()),
+            ("icon.svg", b"<svg/>".as_slice()),
+        ] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(content.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            tar.append_data(&mut header, fname, content).unwrap();
+        }
+        let enc = tar.into_inner().unwrap();
+        enc.finish().unwrap()
+    }
+
+    /// Build a multipart body for upload.
+    fn build_multipart_upload(osp_bytes: &[u8]) -> (String, Vec<u8>) {
+        let boundary = "----TestBoundary123456";
+        let mut body = Vec::new();
+        // osp field
+        body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+        body.extend_from_slice(
+            b"Content-Disposition: form-data; name=\"osp\"; filename=\"test.osp\"\r\n",
+        );
+        body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
+        body.extend_from_slice(osp_bytes);
+        body.extend_from_slice(b"\r\n");
+        // end
+        body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+        (boundary.to_string(), body)
+    }
+
+    async fn body_to_bytes(body: Body) -> Vec<u8> {
+        body.collect().await.unwrap().to_bytes().to_vec()
+    }
+
+    /// Upload an app and return the response JSON.
+    async fn upload_app_helper(
+        app: &Router,
+        name: &str,
+        version: &str,
+    ) -> serde_json::Value {
+        let osp = make_osp_bytes(name, version);
+        let (boundary, body) = build_multipart_upload(&osp);
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/apps/upload")
+            .header(
+                "content-type",
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(Body::from(body))
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = body_to_bytes(resp.into_body()).await;
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_upload_valid_osp() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let json = upload_app_helper(&app, "calculator", "1.0.0").await;
+        assert_eq!(json["name"], "calculator");
+        assert!(!json["id"].as_str().unwrap().is_empty());
+        assert_eq!(json["message"], "uploaded");
+    }
+
+    #[tokio::test]
+    async fn test_upload_invalid_data_returns_400() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let (boundary, body) = build_multipart_upload(b"not a valid osp");
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/apps/upload")
+            .header(
+                "content-type",
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(Body::from(body))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_search_returns_uploaded_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        upload_app_helper(&app, "notes", "2.0").await;
+
+        let req = Request::builder()
+            .uri("/api/apps/search?q=notes")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = body_to_bytes(resp.into_body()).await;
+        let apps: Vec<serde_json::Value> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(apps.len(), 1);
+        assert_eq!(apps[0]["name"], "notes");
+    }
+
+    #[tokio::test]
+    async fn test_search_empty_query_returns_all() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        upload_app_helper(&app, "app1", "1.0").await;
+        upload_app_helper(&app, "app2", "1.0").await;
+
+        let req = Request::builder()
+            .uri("/api/apps/search?q=")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = body_to_bytes(resp.into_body()).await;
+        let apps: Vec<serde_json::Value> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(apps.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_get_app_by_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let json = upload_app_helper(&app, "weather", "3.0").await;
+        let id = json["id"].as_str().unwrap();
+
+        let req = Request::builder()
+            .uri(format!("/api/apps/{id}"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = body_to_bytes(resp.into_body()).await;
+        let entry: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(entry["name"], "weather");
+        assert_eq!(entry["version"], "3.0");
+    }
+
+    #[tokio::test]
+    async fn test_get_app_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let req = Request::builder()
+            .uri("/api/apps/nonexistent-id")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_download_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let json = upload_app_helper(&app, "downloader", "1.0").await;
+        let id = json["id"].as_str().unwrap();
+
+        let req = Request::builder()
+            .uri(format!("/api/apps/{id}/download"))
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers().get("content-type").unwrap(),
+            "application/octet-stream"
+        );
+        let bytes = body_to_bytes(resp.into_body()).await;
+        // The downloaded bytes should be a valid .osp
+        let pkg = crate::osp::OspPackage::from_bytes(&bytes).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<serde_json::Value>(&pkg.manifest_json).unwrap()["name"],
+            "downloader"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_download_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        let req = Request::builder()
+            .uri("/api/apps/no-such-id/download")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_upload_missing_osp_field() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = test_state(dir.path());
+        let app = create_router(state);
+
+        // Send multipart with no "osp" field
+        let boundary = "----TestBoundary999";
+        let mut body = Vec::new();
+        body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+        body.extend_from_slice(
+            b"Content-Disposition: form-data; name=\"other\"; filename=\"f.txt\"\r\n",
+        );
+        body.extend_from_slice(b"Content-Type: text/plain\r\n\r\n");
+        body.extend_from_slice(b"hello");
+        body.extend_from_slice(b"\r\n");
+        body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/apps/upload")
+            .header(
+                "content-type",
+                format!("multipart/form-data; boundary={boundary}"),
+            )
+            .body(Body::from(body))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+}

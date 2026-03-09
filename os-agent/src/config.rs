@@ -2,6 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+/// Primary LLM API endpoint configuration.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct ApiConfig {
     pub base_url: String,
@@ -22,6 +23,7 @@ impl std::fmt::Debug for ApiConfig {
     }
 }
 
+/// Optional fallback LLM endpoint used when the primary API fails.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct FallbackConfig {
     pub base_url: String,
@@ -39,6 +41,7 @@ impl std::fmt::Debug for FallbackConfig {
     }
 }
 
+/// HTTP timeout and retry settings for LLM requests.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NetworkConfig {
     pub timeout_ms: u64,
@@ -54,6 +57,7 @@ impl Default for NetworkConfig {
     }
 }
 
+/// Top-level model configuration loaded from `model.conf`.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ModelConfig {
     pub api: ApiConfig,
@@ -62,6 +66,7 @@ pub struct ModelConfig {
 }
 
 impl ModelConfig {
+    /// Load and decrypt the configuration from a TOML file.
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let mut config: ModelConfig = toml::from_str(&content)?;
@@ -75,6 +80,7 @@ impl ModelConfig {
         Ok(config)
     }
 
+    /// Return the default on-disk path for the model configuration file.
     pub fn default_config_path() -> &'static str {
         "/etc/os-agent/model.conf"
     }

@@ -45,6 +45,7 @@ const ICON_GEN_SYSTEM_PROMPT: &str = r#"Generate a simple SVG icon for the descr
 The SVG should be 64x64 pixels, use simple shapes and 2-3 colors.
 Respond with ONLY the SVG code, nothing else."#;
 
+/// Generates, compiles, packages, and installs openSystem apps from natural language prompts.
 pub struct AppGenerator {
     client: AiClient,
     apps_dir: PathBuf,
@@ -52,6 +53,7 @@ pub struct AppGenerator {
 }
 
 impl AppGenerator {
+    /// Create a generator using the given AI client with default paths.
     pub fn new(client: AiClient) -> Self {
         Self {
             client,

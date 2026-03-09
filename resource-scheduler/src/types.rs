@@ -1,48 +1,70 @@
 use serde::{Deserialize, Serialize};
 
-/// Per-cgroup resource metrics collected by eBPF probes
+/// Per-cgroup resource metrics collected by the monitor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CgroupMetrics {
-    pub app_id: String,         // cgroup name / app UUID
-    pub cpu_usage_percent: f32, // 0-100
+    /// Cgroup name / app UUID identifying the monitored process group.
+    pub app_id: String,
+    /// CPU utilization as a percentage (0–100).
+    pub cpu_usage_percent: f32,
+    /// Memory currently in use (MiB).
     pub memory_used_mb: u64,
+    /// Hard memory limit (MiB); 0 means unlimited.
     pub memory_limit_mb: u64,
+    /// Disk read throughput (KiB/s).
     pub io_read_kb_s: u64,
+    /// Disk write throughput (KiB/s).
     pub io_write_kb_s: u64,
+    /// Network receive throughput (KiB/s).
     pub net_rx_kb_s: u64,
+    /// Network transmit throughput (KiB/s).
     pub net_tx_kb_s: u64,
+    /// Number of live PIDs in the cgroup.
     pub pid_count: u32,
+    /// Unix timestamp in milliseconds when these metrics were sampled.
     pub timestamp_ms: u64,
 }
 
-/// Resource allocation action emitted by AI decision loop
+/// Resource allocation action emitted by the AI decision loop.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResourceAction {
-    SetCpuWeight { app: String, weight: u32 }, // 1-10000, default 1024
-    SetMemoryLimit { app: String, limit_mb: u64 }, // 0 = unlimited
-    SetIoWeight { app: String, weight: u32 },  // 1-10000
-    KillApp { app: String, reason: String },   // Last resort
-    NoOp,                                      // No change needed
+    /// Adjust the cpu.weight of a cgroup (range 1–10000, default 1024).
+    SetCpuWeight { app: String, weight: u32 },
+    /// Set a memory hard limit (MiB); 0 means unlimited.
+    SetMemoryLimit { app: String, limit_mb: u64 },
+    /// Adjust the io.weight of a cgroup (range 1–10000).
+    SetIoWeight { app: String, weight: u32 },
+    /// Terminate an app as a last resort.
+    KillApp { app: String, reason: String },
+    /// No change required — system is within acceptable bounds.
+    NoOp,
 }
 
-/// AI decision response
+/// Response returned by the AI decision loop for a single scheduling tick.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecisionResponse {
+    /// Ordered list of resource actions to apply.
     pub actions: Vec<ResourceAction>,
-    pub reasoning: Option<String>, // LLM's explanation (for logging)
+    /// Optional LLM explanation included for audit logging.
+    pub reasoning: Option<String>,
 }
 
-/// System-wide resource snapshot
+/// System-wide resource snapshot passed to the AI decision loop.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemSnapshot {
+    /// Per-app cgroup metrics collected this tick.
     pub metrics: Vec<CgroupMetrics>,
+    /// Total physical memory available (MiB).
     pub total_memory_mb: u64,
+    /// Number of logical CPU cores.
     pub total_cpu_cores: u32,
+    /// Unix timestamp in milliseconds when this snapshot was taken.
     pub timestamp_ms: u64,
 }
 
 impl SystemSnapshot {
+    /// Build a snapshot from the given per-app metrics, sampling system totals from `/proc`.
     pub fn now(metrics: Vec<CgroupMetrics>) -> Self {
         let total_memory_mb = sys_total_memory_mb();
         let total_cpu_cores = num_cpus();

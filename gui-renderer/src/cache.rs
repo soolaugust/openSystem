@@ -20,6 +20,7 @@ pub struct UidlCache {
 }
 
 impl UidlCache {
+    /// Create a cache that holds at most `max_entries` documents.
     pub fn new(max_entries: usize) -> Self {
         Self {
             entries: Arc::new(Mutex::new(HashMap::new())),
@@ -27,6 +28,7 @@ impl UidlCache {
         }
     }
 
+    /// Look up a cached UIDL document by key, updating its access time.
     pub fn get(&self, key: &str) -> Option<UidlDocument> {
         let mut entries = match self.entries.lock() {
             Ok(guard) => guard,
@@ -40,6 +42,7 @@ impl UidlCache {
         }
     }
 
+    /// Insert a document, evicting the least-recently-accessed entry if at capacity.
     pub fn insert(&self, key: CacheKey, document: UidlDocument) {
         let mut entries = match self.entries.lock() {
             Ok(guard) => guard,
@@ -64,6 +67,7 @@ impl UidlCache {
         );
     }
 
+    /// Remove a single entry by key.
     pub fn invalidate(&self, key: &str) {
         match self.entries.lock() {
             Ok(mut guard) => {
@@ -75,6 +79,7 @@ impl UidlCache {
         }
     }
 
+    /// Remove all entries.
     pub fn clear(&self) {
         match self.entries.lock() {
             Ok(mut guard) => guard.clear(),
@@ -82,6 +87,7 @@ impl UidlCache {
         }
     }
 
+    /// Return the number of cached entries.
     pub fn len(&self) -> usize {
         match self.entries.lock() {
             Ok(guard) => guard.len(),
@@ -89,6 +95,7 @@ impl UidlCache {
         }
     }
 
+    /// Returns `true` if the cache contains no entries.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

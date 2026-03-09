@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+/// The kind of user intent recognized by the classifier.
 pub enum IntentKind {
     CreateApp,     // 创建新 App
     RunApp,        // 运行已安装 App
@@ -15,6 +16,7 @@ pub enum IntentKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// A classified user intent with its kind, description, and extracted parameters.
 pub struct Intent {
     pub kind: IntentKind,
     pub description: String,
@@ -33,6 +35,7 @@ Classify user input into one of these intents:
 Respond with JSON only:
 {"kind": "<intent>", "description": "<brief description>", "parameters": {<relevant params>}}"#;
 
+/// Classify free-form user input into a structured [`Intent`] via the AI model.
 pub async fn classify(input: &str, client: &AiClient) -> Result<Intent> {
     let messages = vec![Message::system(SYSTEM_PROMPT), Message::user(input)];
 

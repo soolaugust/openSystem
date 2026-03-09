@@ -215,6 +215,7 @@ fn detect_network_interfaces() -> Vec<String> {
 
 // ─── AI Endpoint Configuration ────────────────────────────────────────────────
 
+/// Configuration for a single LLM API endpoint collected during setup.
 #[derive(Debug)]
 pub struct ApiEndpointConfig {
     pub base_url: String,

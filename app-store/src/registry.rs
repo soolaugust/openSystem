@@ -3,19 +3,30 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+/// A registered application entry in the store database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppEntry {
+    /// Unique identifier (UUID) for this app.
     pub id: String,
+    /// Human-readable app name.
     pub name: String,
+    /// Semantic version string.
     pub version: String,
+    /// Prose description shown in search results.
     pub description: String,
+    /// Capability permissions declared in the manifest.
     pub permissions: Vec<String>,
+    /// Ed25519 public key (hex) used to verify the package signature.
     pub public_key: String,
+    /// Unix timestamp of when the package was uploaded.
     pub created_at: i64,
+    /// Filesystem path to the stored `.osp` package file.
     pub osp_path: String,
+    /// Optional UIDL spec stored as a JSON string.
     pub ui_spec: Option<String>,
 }
 
+/// SQLite-backed application registry for the app store.
 pub struct AppRegistry {
     conn: Connection,
     #[allow(dead_code)]
@@ -23,6 +34,7 @@ pub struct AppRegistry {
 }
 
 impl AppRegistry {
+    /// Open (or create) the registry database at `db_path`, storing .osp files under `store_dir`.
     pub fn new(db_path: impl AsRef<Path>, store_dir: impl AsRef<Path>) -> Result<Self> {
         let conn = Connection::open(db_path).context("failed to open SQLite database")?;
         conn.execute_batch(
@@ -45,6 +57,7 @@ impl AppRegistry {
         })
     }
 
+    /// Insert a new app entry into the registry.
     pub fn insert(&self, entry: &AppEntry) -> Result<()> {
         let permissions_json =
             serde_json::to_string(&entry.permissions).context("failed to serialize permissions")?;
@@ -66,6 +79,7 @@ impl AppRegistry {
         Ok(())
     }
 
+    /// Search apps by name or description (case-insensitive substring match).
     pub fn search(&self, query: &str) -> Result<Vec<AppEntry>> {
         let pattern = format!("%{}%", query);
         let mut stmt = self.conn.prepare(
@@ -123,6 +137,7 @@ impl AppRegistry {
         Ok(result)
     }
 
+    /// Look up an app by its unique ID.
     pub fn get_by_id(&self, id: &str) -> Result<Option<AppEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, version, description, permissions, public_key, created_at, osp_path, ui_spec
@@ -178,6 +193,7 @@ impl AppRegistry {
         }
     }
 
+    /// Return all registered apps ordered by creation time (newest first).
     pub fn list_all(&self) -> Result<Vec<AppEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, version, description, permissions, public_key, created_at, osp_path, ui_spec

@@ -16,6 +16,7 @@ struct RawSnapshot {
     timestamp_ms: u64,
 }
 
+/// Collects per-app resource metrics from cgroup v2 control files with delta-based rate calculation.
 pub struct CgroupMonitor {
     cgroup_root: PathBuf,
     aios_cgroup: String,
@@ -23,6 +24,7 @@ pub struct CgroupMonitor {
 }
 
 impl CgroupMonitor {
+    /// Create a monitor targeting the default cgroup root (`/sys/fs/cgroup`).
     pub fn new() -> Self {
         Self {
             cgroup_root: PathBuf::from("/sys/fs/cgroup"),
@@ -40,6 +42,7 @@ impl CgroupMonitor {
         }
     }
 
+    /// Collect metrics for every app under the `opensystem.slice` cgroup.
     pub fn collect(&self) -> Result<Vec<CgroupMetrics>> {
         let aios_path = self.cgroup_root.join(&self.aios_cgroup);
         if !aios_path.exists() {

@@ -4,15 +4,18 @@ use crate::intent::{classify, IntentKind};
 use anyhow::Result;
 use rustyline::DefaultEditor;
 
+/// Natural-language terminal that classifies user input into intents and dispatches actions.
 pub struct NlTerminal {
     client: AiClient,
 }
 
 impl NlTerminal {
+    /// Create a new terminal backed by the given AI client.
     pub fn new(client: AiClient) -> Self {
         Self { client }
     }
 
+    /// Start the REPL loop, reading user input and dispatching classified intents.
     pub async fn run(&mut self) -> Result<()> {
         println!("openSystem v0.0.1 — The OS that assumes you have AI.");
         println!("Type your intent in natural language. Type 'exit' to quit.\n");

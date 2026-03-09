@@ -21,12 +21,14 @@ fn validate_app_id(app: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Applies [`ResourceAction`]s by writing to cgroup v2 control files.
 pub struct CgroupExecutor {
     cgroup_root: PathBuf,
     aios_cgroup: String,
 }
 
 impl CgroupExecutor {
+    /// Create an executor targeting the default cgroup root (`/sys/fs/cgroup/opensystem.slice`).
     pub fn new() -> Self {
         Self {
             cgroup_root: PathBuf::from("/sys/fs/cgroup"),
@@ -34,6 +36,7 @@ impl CgroupExecutor {
         }
     }
 
+    /// Execute a single resource action, writing the corresponding cgroup control file.
     pub fn execute(&self, action: &ResourceAction) -> Result<()> {
         match action {
             ResourceAction::SetCpuWeight { app, weight } => self.set_cpu_weight(app, *weight),

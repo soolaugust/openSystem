@@ -33,6 +33,7 @@ Output JSON only:
   "reasoning": "<brief explanation>"
 }"#;
 
+/// Periodic decision loop that feeds system snapshots to an LLM and applies the returned actions.
 pub struct AiDecisionLoop {
     api_base_url: String,
     api_key: String,
@@ -43,6 +44,7 @@ pub struct AiDecisionLoop {
 }
 
 impl AiDecisionLoop {
+    /// Create a new decision loop with the given LLM endpoint credentials.
     pub fn new(api_base_url: String, api_key: String, model: String) -> Self {
         Self {
             api_base_url,

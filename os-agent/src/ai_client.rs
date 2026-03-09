@@ -53,6 +53,7 @@ struct AnthropicContent {
 
 // ── Shared message type ───────────────────────────────────────────────────────
 
+/// A single chat message (role + content) compatible with both OpenAI and Anthropic APIs.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     pub role: String,
@@ -60,12 +61,14 @@ pub struct Message {
 }
 
 impl Message {
+    /// Create a system-role message.
     pub fn system(content: impl Into<String>) -> Self {
         Self {
             role: "system".into(),
             content: content.into(),
         }
     }
+    /// Create a user-role message.
     pub fn user(content: impl Into<String>) -> Self {
         Self {
             role: "user".into(),
@@ -73,6 +76,7 @@ impl Message {
         }
     }
     #[allow(dead_code)]
+    /// Create an assistant-role message.
     pub fn assistant(content: impl Into<String>) -> Self {
         Self {
             role: "assistant".into(),
@@ -83,6 +87,7 @@ impl Message {
 
 // ── Client ────────────────────────────────────────────────────────────────────
 
+/// HTTP client for LLM inference, supporting both OpenAI-compatible and Anthropic APIs.
 #[derive(Clone)]
 pub struct AiClient {
     client: Client,
@@ -92,6 +97,7 @@ pub struct AiClient {
 }
 
 impl AiClient {
+    /// Build a new client from the given model configuration.
     pub fn new(config: ModelConfig) -> Result<Self> {
         let client = Client::builder()
             .timeout(std::time::Duration::from_millis(config.network.timeout_ms))
@@ -106,6 +112,7 @@ impl AiClient {
         })
     }
 
+    /// Send a chat completion request, returning the assistant's response text.
     pub async fn complete(&self, messages: Vec<Message>) -> Result<String> {
         let max_attempts = self.config.network.retry_count.max(1) as usize;
         let mut last_error = String::new();

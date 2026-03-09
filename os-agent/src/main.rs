@@ -1,12 +1,5 @@
-mod ai_client;
-mod app_generator;
-mod config;
-mod intent;
-mod nl_terminal;
-mod setup_wizard;
-mod utils;
-
 use anyhow::{Context, Result};
+use os_agent::{ai_client, config, nl_terminal, setup_wizard};
 use tracing::info;
 
 /// Flag file written after a successful first-boot setup.

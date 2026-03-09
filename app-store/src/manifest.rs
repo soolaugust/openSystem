@@ -1,13 +1,21 @@
+//! App package manifest — the `manifest.json` inside every `.osp` archive.
+
 use serde::{Deserialize, Serialize};
 
+/// Metadata embedded in every `.osp` package archive as `manifest.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppManifest {
+    /// Human-readable app name (e.g. `"calculator"`).
     pub name: String,
+    /// Semantic version string (e.g. `"1.0.0"`).
     pub version: String,
+    /// Optional prose description shown in the store UI.
     #[serde(default)]
     pub description: String,
+    /// Capability permissions the app requests (e.g. `["net", "storage"]`).
     #[serde(default)]
     pub permissions: Vec<String>,
+    /// Optional UIDL layout spec embedded in the manifest.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ui_spec: Option<serde_json::Value>,
 }

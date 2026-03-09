@@ -3,6 +3,7 @@ use flate2::read::GzDecoder;
 use std::io::{Cursor, Read};
 use tar::Archive;
 
+/// Contents of an `.osp` package (tar.gz archive containing wasm, manifest, prompt, icon, and optional signature).
 pub struct OspPackage {
     pub wasm_bytes: Vec<u8>,
     pub manifest_json: Vec<u8>,

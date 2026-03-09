@@ -3,6 +3,10 @@ name = "os-agent"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "os_agent"
+path = "src/lib.rs"
+
 [[bin]]
 name = "os-agent"
 path = "src/main.rs"
@@ -26,3 +30,8 @@ libc = "0.2"
 wiremock = "0.6"
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "intent_bench"
+harness = false

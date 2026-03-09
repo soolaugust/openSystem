@@ -55,6 +55,7 @@ pub enum Widget {
     },
 }
 
+/// Text styling options for a [`Widget::Text`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TextStyle {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,6 +68,7 @@ pub struct TextStyle {
     pub align: Option<TextAlign>,
 }
 
+/// Horizontal text alignment.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TextAlign {
@@ -75,6 +77,7 @@ pub enum TextAlign {
     Right,
 }
 
+/// Visual styling for a [`Widget::Button`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ButtonStyle {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -95,6 +98,7 @@ pub struct UidlDocument {
     pub metadata: Option<BTreeMap<String, String>>,
 }
 
+/// Global theme applied to a [`UidlDocument`].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Theme {
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -7,70 +7,104 @@
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
+/// Shared data types used across all syscall modules.
 pub mod types {
     use serde::{Deserialize, Serialize};
 
+    /// Opaque handle returned by [`super::ui::render`], used to update or destroy a render tree.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct RenderHandle(pub u64);
 
+    /// A UI widget that can be serialized to JSON and sent to the host renderer.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     #[serde(tag = "type", rename_all = "snake_case")]
     pub enum Widget {
+        /// Single-line or multi-line text display.
         Text {
+            /// Text content to display.
             content: String,
+            /// Optional visual styling.
             style: Option<TextStyle>,
         },
+        /// Tappable button that fires an action string.
         Button {
+            /// Button label text.
             label: String,
+            /// Action identifier sent to the app on press.
             action: String,
         },
+        /// Vertical stack of child widgets.
         VStack {
+            /// Gap in pixels between children.
             gap: Option<u32>,
+            /// Padding in pixels around the stack.
             padding: Option<u32>,
+            /// Ordered child widgets.
             children: Vec<Widget>,
         },
+        /// Horizontal stack of child widgets.
         HStack {
+            /// Gap in pixels between children.
             gap: Option<u32>,
+            /// Ordered child widgets.
             children: Vec<Widget>,
         },
+        /// Single-line text input field.
         Input {
+            /// Placeholder text shown when empty.
             placeholder: Option<String>,
+            /// Action identifier sent on value change.
             on_change: Option<String>,
         },
     }
 
+    /// Text rendering options for [`Widget::Text`].
     #[derive(Debug, Clone, Serialize, Deserialize, Default)]
     pub struct TextStyle {
+        /// Font size in pixels.
         pub font_size: Option<u32>,
+        /// CSS-style color string (e.g. `"#ff0000"`).
         pub color: Option<String>,
+        /// Whether to render bold text.
         pub bold: Option<bool>,
     }
 
+    /// Full UI specification — the top-level widget tree sent to the renderer.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct UISpec {
+        /// Root widget of the layout tree.
         pub layout: Widget,
     }
 
+    /// Incremental update to an existing rendered UI tree.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct UIDiff {
-        /// (widget_id, new_widget)
+        /// List of `(widget_id, replacement_widget)` pairs.
         pub updates: Vec<(String, Widget)>,
     }
 
+    /// System notification to display outside the app window.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct Notification {
+        /// Short notification title.
         pub title: String,
+        /// Longer notification body text.
         pub body: String,
     }
 
+    /// Errors returned by syscall functions.
     #[derive(Debug, thiserror::Error)]
     pub enum SyscallError {
+        /// Network request failed.
         #[error("net error: {0}")]
         Net(String),
+        /// Storage read or write failed.
         #[error("storage error: {0}")]
         Storage(String),
+        /// The app lacks the required permission.
         #[error("permission denied: {0}")]
         PermissionDenied(String),
+        /// JSON serialization error (auto-converted via `From`).
         #[error("serialization error: {0}")]
         Serde(#[from] serde_json::Error),
     }
@@ -78,6 +112,7 @@ pub mod types {
 
 // ─── ui ──────────────────────────────────────────────────────────────────────
 
+/// UI rendering syscalls — render and update UIDL widget trees via the host.
 pub mod ui {
     use super::types::*;
 
@@ -126,6 +161,7 @@ pub mod ui {
 
 // ─── timer ───────────────────────────────────────────────────────────────────
 
+/// Timer syscalls — register and cancel repeating callbacks via the host event loop.
 pub mod timer {
     use std::sync::Mutex;
 
@@ -215,6 +251,7 @@ pub mod timer {
 
 // ─── storage ─────────────────────────────────────────────────────────────────
 
+/// Key-value storage syscalls — persist and retrieve byte blobs via the host.
 pub mod storage {
     use super::types::SyscallError;
 
@@ -291,6 +328,7 @@ pub mod storage {
 
 // ─── notify ──────────────────────────────────────────────────────────────────
 
+/// Notification syscalls — send OS-level notifications from an app.
 pub mod notify {
     /// Send a desktop/system notification.
     pub fn send(title: &str, body: &str) {
@@ -575,6 +613,7 @@ mod tests {
 
 // ─── net ─────────────────────────────────────────────────────────────────────
 
+/// Network syscalls — perform HTTP requests from an app (requires `net` permission).
 pub mod net {
     use super::types::SyscallError;
 

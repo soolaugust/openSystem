@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use axum::{
     body::Body,
     extract::{Multipart, Path, Query, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::Response,
     routing::{get, post},
     Json, Router,
@@ -18,12 +18,14 @@ use crate::osp::OspPackage;
 use crate::registry::{AppEntry, AppRegistry};
 use crate::signing;
 
+/// Shared application state passed to all HTTP handlers via axum `State`.
 #[derive(Clone)]
 pub struct AppState {
     pub registry: Arc<Mutex<AppRegistry>>,
     pub store_dir: PathBuf,
 }
 
+/// Build the axum router with all app-store API routes.
 pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/api/apps/upload", post(upload_app))
@@ -39,6 +41,7 @@ fn api_error(status: StatusCode, msg: impl ToString) -> (StatusCode, Json<serde_
     (status, Json(serde_json::json!({"error": msg.to_string()})))
 }
 
+/// JSON response returned after a successful `.osp` upload.
 #[derive(Serialize)]
 pub struct UploadResponse {
     id: String,
@@ -46,16 +49,38 @@ pub struct UploadResponse {
     message: String,
 }
 
+/// Query parameters for the `GET /api/apps/search` endpoint.
 #[derive(Deserialize)]
 pub struct SearchParams {
     #[serde(default)]
     pub q: String,
 }
 
+/// Handle `POST /api/apps/upload` — accept a multipart `.osp` package, validate, and register.
+///
+/// Requires a valid `X-Api-Key` header when `OPENSYSTEM_STORE_API_KEY` is set.
+/// When the env var is absent, authentication is skipped (development mode).
 pub async fn upload_app(
+    headers: HeaderMap,
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> ApiResult<Json<UploadResponse>> {
+    // Optional API key authentication: enforced only when env var is set.
+    if let Ok(required_key) = std::env::var("OPENSYSTEM_STORE_API_KEY") {
+        if !required_key.is_empty() {
+            let provided = headers
+                .get("X-Api-Key")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+            if provided != required_key {
+                return Err(api_error(
+                    StatusCode::UNAUTHORIZED,
+                    "invalid or missing X-Api-Key",
+                ));
+            }
+        }
+    }
+
     let mut osp_bytes: Option<Vec<u8>> = None;
     let mut public_key: Option<String> = None;
 
@@ -186,6 +211,7 @@ pub async fn upload_app(
     }))
 }
 
+/// Handle `GET /api/apps/search?q=…` — full-text search over registered apps.
 pub async fn search_apps(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
@@ -203,6 +229,7 @@ pub async fn search_apps(
     Ok(Json(entries))
 }
 
+/// Handle `GET /api/apps/:id` — return metadata for a single app.
 pub async fn get_app(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -223,6 +250,7 @@ pub async fn get_app(
     }
 }
 
+/// Handle `GET /api/apps/:id/download` — stream the raw `.osp` package bytes.
 pub async fn download_app(
     State(state): State<AppState>,
     Path(id): Path<String>,

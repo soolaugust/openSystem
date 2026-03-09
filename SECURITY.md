@@ -6,7 +6,8 @@
 
 | Version | Status |
 |---------|--------|
-| 0.0.x   | Experimental — best-effort fixes only |
+| v1.0.x  | Active development — best-effort fixes |
+| 0.x.x   | Experimental — best-effort fixes only |
 
 ## Reporting a Vulnerability
 
@@ -58,3 +59,16 @@ openSystem requires a remote LLM endpoint by design. Ensure your inference endpo
 ### WASM App Sandbox
 
 Apps run inside a Wasmtime sandbox (`wasm32-wasip1`). Capabilities are restricted to what is explicitly granted via `os-syscall-bindings`. Do not grant filesystem or network capabilities beyond what an app requires.
+
+### App Store Upload Authentication
+
+The app store (`POST /api/apps/upload`) supports optional API key authentication:
+
+- Set `OPENSYSTEM_STORE_API_KEY` environment variable to a secret key.
+- Clients must pass the key in the `X-Api-Key` request header.
+- When the env var is **not set** (or empty), authentication is skipped — this is the default development-mode behavior for local testing.
+
+**Known limitations:**
+- Authentication is a simple bearer token comparison; there is no per-user access control or key rotation mechanism.
+- No rate limiting is implemented. A public-facing store should be placed behind a reverse proxy (e.g. nginx) with connection-rate and request-rate limiting.
+- HTTPS is not enforced by the server itself; terminate TLS at the reverse proxy layer.

@@ -356,6 +356,23 @@ Respond with JSON only:
     Ok(spec)
 }
 
+fn default_icon(app_name: &str) -> String {
+    let initial = app_name
+        .chars()
+        .next()
+        .unwrap_or('A')
+        .to_uppercase()
+        .to_string();
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#6366F1"/>
+  <text x="32" y="44" font-family="sans-serif" font-size="32" font-weight="bold"
+        text-anchor="middle" fill="white">{}</text>
+</svg>"##,
+        initial
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -431,21 +448,4 @@ mod tests {
         // Should fallback to 'A'
         assert!(svg.contains(">A<"));
     }
-}
-
-fn default_icon(app_name: &str) -> String {
-    let initial = app_name
-        .chars()
-        .next()
-        .unwrap_or('A')
-        .to_uppercase()
-        .to_string();
-    format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#6366F1"/>
-  <text x="32" y="44" font-family="sans-serif" font-size="32" font-weight="bold"
-        text-anchor="middle" fill="white">{}</text>
-</svg>"##,
-        initial
-    )
 }

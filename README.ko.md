@@ -76,8 +76,28 @@ cargo build --workspace
 ### QEMU에서 실행
 
 ```bash
+# 시스템 이미지 빌드
 python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
-qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
+
+# 권장 설정으로 QEMU 실행
+qemu-system-x86_64 \
+  -hda system.img \
+  -m 8G \
+  -smp 4 \
+  -enable-kvm \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0,hostfwd=tcp::8080-:8080 \
+  -nographic
+```
+
+`-nographic`는 헤드리스 모드(시리얼 콘솔)로 실행합니다. 포트 8080은 앱 스토어 API용으로 포워딩됩니다. GUI 세션이 필요한 경우 `-nographic`를 virtio-gpu로 교체하세요:
+
+```bash
+qemu-system-x86_64 \
+  -hda system.img -m 8G -smp 4 -enable-kvm \
+  -device virtio-gpu -device virtio-keyboard-pci -device virtio-mouse-pci \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0,hostfwd=tcp::8080-:8080
 ```
 
 ### AI 모델 설정

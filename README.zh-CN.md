@@ -76,8 +76,28 @@ cargo build --workspace
 ### 在 QEMU 中运行
 
 ```bash
+# 构建系统镜像
 python3 rom-builder/build.py --manifest hardware_manifest_qemu.json
-qemu-system-x86_64 -hda system.img -m 8G -enable-kvm
+
+# 使用推荐参数启动 QEMU
+qemu-system-x86_64 \
+  -hda system.img \
+  -m 8G \
+  -smp 4 \
+  -enable-kvm \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0,hostfwd=tcp::8080-:8080 \
+  -nographic
+```
+
+`-nographic` 以无头模式运行（串口控制台）。8080 端口转发用于 app-store API。如需 GUI 会话，将 `-nographic` 替换为 virtio-gpu：
+
+```bash
+qemu-system-x86_64 \
+  -hda system.img -m 8G -smp 4 -enable-kvm \
+  -device virtio-gpu -device virtio-keyboard-pci -device virtio-mouse-pci \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0,hostfwd=tcp::8080-:8080
 ```
 
 ### 配置 AI 模型

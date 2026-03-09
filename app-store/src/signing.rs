@@ -99,4 +99,84 @@ mod tests {
         let result = verify_signature(&pub_hex, &sig, b"tampered wasm", manifest);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_verify_fails_on_tampered_manifest() {
+        let (priv_hex, pub_hex) = generate_keypair();
+        let wasm = b"wasm data";
+        let manifest = b"original manifest";
+        let sig = sign_content(&priv_hex, wasm, manifest).unwrap();
+        let result = verify_signature(&pub_hex, &sig, wasm, b"tampered manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_derive_public_key() {
+        let (priv_hex, pub_hex) = generate_keypair();
+        let derived = derive_public_key(&priv_hex).unwrap();
+        assert_eq!(derived, pub_hex);
+    }
+
+    #[test]
+    fn test_sign_content_invalid_key_hex() {
+        let result = sign_content("not-hex", b"wasm", b"manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sign_content_wrong_key_length() {
+        let result = sign_content("abcd", b"wasm", b"manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_invalid_public_key_hex() {
+        let result = verify_signature("not-hex", "sig", b"wasm", b"manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_invalid_sig_hex() {
+        let (_, pub_hex) = generate_keypair();
+        let result = verify_signature(&pub_hex, "not-hex", b"wasm", b"manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_verify_wrong_sig_length() {
+        let (_, pub_hex) = generate_keypair();
+        let result = verify_signature(&pub_hex, "abcd", b"wasm", b"manifest");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_derive_public_key_invalid_hex() {
+        let result = derive_public_key("gggg");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_content_digest_deterministic() {
+        let d1 = content_digest(b"wasm", b"manifest");
+        let d2 = content_digest(b"wasm", b"manifest");
+        assert_eq!(d1, d2);
+    }
+
+    #[test]
+    fn test_content_digest_changes_with_input() {
+        let d1 = content_digest(b"wasm_a", b"manifest");
+        let d2 = content_digest(b"wasm_b", b"manifest");
+        assert_ne!(d1, d2);
+    }
+
+    #[test]
+    fn test_wrong_keypair_fails_verification() {
+        let (priv_hex, _pub_hex) = generate_keypair();
+        let (_, other_pub) = generate_keypair();
+        let wasm = b"data";
+        let manifest = b"meta";
+        let sig = sign_content(&priv_hex, wasm, manifest).unwrap();
+        let result = verify_signature(&other_pub, &sig, wasm, manifest);
+        assert!(result.is_err());
+    }
 }

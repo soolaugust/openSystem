@@ -81,3 +81,105 @@ fn num_cpus() -> u32 {
         .map(|s| s.lines().filter(|l| l.starts_with("processor")).count() as u32)
         .unwrap_or(1)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resource_action_serde_roundtrip() {
+        let actions = vec![
+            ResourceAction::SetCpuWeight {
+                app: "test-app".to_string(),
+                weight: 1024,
+            },
+            ResourceAction::SetMemoryLimit {
+                app: "test-app".to_string(),
+                limit_mb: 512,
+            },
+            ResourceAction::SetIoWeight {
+                app: "test-app".to_string(),
+                weight: 100,
+            },
+            ResourceAction::KillApp {
+                app: "test-app".to_string(),
+                reason: "oom".to_string(),
+            },
+            ResourceAction::NoOp,
+        ];
+
+        for action in &actions {
+            let json = serde_json::to_string(action).unwrap();
+            let parsed: ResourceAction = serde_json::from_str(&json).unwrap();
+            assert_eq!(*action, parsed);
+        }
+    }
+
+    #[test]
+    fn test_resource_action_tagged_json_format() {
+        let action = ResourceAction::SetCpuWeight {
+            app: "my-app".to_string(),
+            weight: 500,
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        assert!(json.contains("\"type\":\"set_cpu_weight\""));
+        assert!(json.contains("\"app\":\"my-app\""));
+        assert!(json.contains("\"weight\":500"));
+    }
+
+    #[test]
+    fn test_decision_response_serde() {
+        let resp = DecisionResponse {
+            actions: vec![ResourceAction::NoOp],
+            reasoning: Some("all good".to_string()),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: DecisionResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.actions.len(), 1);
+        assert_eq!(parsed.reasoning.as_deref(), Some("all good"));
+    }
+
+    #[test]
+    fn test_system_snapshot_now() {
+        let snapshot = SystemSnapshot::now(vec![]);
+        assert!(snapshot.timestamp_ms > 0);
+        assert!(snapshot.total_cpu_cores >= 1);
+        // On Linux with /proc, total_memory_mb should be > 0
+        #[cfg(target_os = "linux")]
+        assert!(snapshot.total_memory_mb > 0);
+    }
+
+    #[test]
+    fn test_sys_total_memory_mb() {
+        let mem = sys_total_memory_mb();
+        #[cfg(target_os = "linux")]
+        assert!(mem > 0, "should read memory from /proc/meminfo");
+    }
+
+    #[test]
+    fn test_num_cpus_returns_positive() {
+        let cpus = num_cpus();
+        assert!(cpus >= 1, "should return at least 1 CPU");
+    }
+
+    #[test]
+    fn test_cgroup_metrics_serde() {
+        let metrics = CgroupMetrics {
+            app_id: "test".to_string(),
+            cpu_usage_percent: 45.5,
+            memory_used_mb: 256,
+            memory_limit_mb: 512,
+            io_read_kb_s: 100,
+            io_write_kb_s: 50,
+            net_rx_kb_s: 10,
+            net_tx_kb_s: 5,
+            pid_count: 3,
+            timestamp_ms: 1234567890,
+        };
+        let json = serde_json::to_string(&metrics).unwrap();
+        let parsed: CgroupMetrics = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.app_id, "test");
+        assert!((parsed.cpu_usage_percent - 45.5).abs() < f32::EPSILON);
+        assert_eq!(parsed.memory_used_mb, 256);
+    }
+}

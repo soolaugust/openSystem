@@ -105,4 +105,74 @@ mod tests {
         let retrieved = cache.get("k1");
         assert!(retrieved.is_some());
     }
+
+    #[test]
+    fn test_cache_invalidate() {
+        let cache = UidlCache::new(10);
+        let doc =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        cache.insert("k1".to_string(), doc);
+        assert!(cache.get("k1").is_some());
+        cache.invalidate("k1");
+        assert!(cache.get("k1").is_none());
+    }
+
+    #[test]
+    fn test_cache_clear() {
+        let cache = UidlCache::new(10);
+        let doc =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        cache.insert("k1".to_string(), doc.clone());
+        cache.insert("k2".to_string(), doc);
+        assert_eq!(cache.len(), 2);
+        cache.clear();
+        assert_eq!(cache.len(), 0);
+        assert!(cache.is_empty());
+    }
+
+    #[test]
+    fn test_cache_overwrite_same_key() {
+        let cache = UidlCache::new(10);
+        let doc1 =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "first"}}"#).unwrap();
+        let doc2 =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "second"}}"#).unwrap();
+        cache.insert("k1".to_string(), doc1);
+        cache.insert("k1".to_string(), doc2.clone());
+        let retrieved = cache.get("k1").unwrap();
+        assert_eq!(retrieved, doc2);
+    }
+
+    #[test]
+    fn test_cache_lru_evicts_oldest() {
+        let cache = UidlCache::new(2);
+        let doc =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        cache.insert("oldest".to_string(), doc.clone());
+        // Small delay to ensure different timestamps
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        cache.insert("newer".to_string(), doc.clone());
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        // Access "oldest" to make it recently used
+        cache.get("oldest");
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        // Insert third - should evict "newer" since "oldest" was accessed more recently
+        cache.insert("newest".to_string(), doc);
+        assert_eq!(cache.len(), 2);
+        assert!(cache.get("oldest").is_some());
+        assert!(cache.get("newest").is_some());
+        assert!(cache.get("newer").is_none());
+    }
+
+    #[test]
+    fn test_cache_capacity_one() {
+        let cache = UidlCache::new(1);
+        let doc =
+            UidlDocument::parse(r#"{"layout": {"type": "text", "content": "x"}}"#).unwrap();
+        cache.insert("k1".to_string(), doc.clone());
+        cache.insert("k2".to_string(), doc);
+        assert_eq!(cache.len(), 1);
+        assert!(cache.get("k2").is_some());
+        assert!(cache.get("k1").is_none());
+    }
 }

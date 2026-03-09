@@ -99,12 +99,10 @@ impl NlTerminal {
                         self.handle_system_query(input).await;
                     }
                     IntentKind::RunApp => {
-                        println!("  → Run app: {}", intent.description);
-                        println!("    (App runner not yet wired up)");
+                        self.handle_run_app(&intent).await;
                     }
                     IntentKind::InstallApp => {
-                        println!("  → Install from store: {}", intent.description);
-                        println!("    (Store client not yet wired up)");
+                        self.handle_install_app(&intent).await;
                     }
                     IntentKind::Unknown => {
                         println!("  → Could not understand intent. Please try rephrasing.");
@@ -155,6 +153,224 @@ impl NlTerminal {
         match self.client.complete(messages).await {
             Ok(response) => println!("  {}", response.trim()),
             Err(e) => eprintln!("  Error: {}", e),
+        }
+    }
+
+    async fn handle_run_app(&self, intent: &crate::intent::Intent) {
+        let app_name = intent
+            .parameters
+            .get("app_name")
+            .and_then(|v| v.as_str())
+            .or_else(|| intent.parameters.get("name").and_then(|v| v.as_str()))
+            .unwrap_or("");
+
+        let apps_dir = std::path::Path::new("/apps");
+        if !apps_dir.exists() {
+            println!("  → No apps installed yet. Use 'install <app>' to install from the store.");
+            return;
+        }
+
+        let entries = match std::fs::read_dir(apps_dir) {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("  → Failed to read /apps directory: {}", e);
+                return;
+            }
+        };
+
+        let mut matched = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let manifest_path = path.join("manifest.json");
+            if !manifest_path.exists() {
+                continue;
+            }
+            let manifest_str = match std::fs::read_to_string(&manifest_path) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let manifest: serde_json::Value = match serde_json::from_str(&manifest_str) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            let name = manifest["name"].as_str().unwrap_or("");
+            // Match by name (case-insensitive substring)
+            if !app_name.is_empty()
+                && name.to_lowercase().contains(&app_name.to_lowercase())
+            {
+                matched.push((path, manifest));
+            } else if app_name.is_empty() {
+                // If no name specified, show all
+                matched.push((path, manifest));
+            }
+        }
+
+        if matched.is_empty() {
+            if app_name.is_empty() {
+                println!("  → No apps installed. Use 'install <app>' to install from the store.");
+            } else {
+                println!(
+                    "  → No installed app matching '{}'. Use 'install {}' to install it.",
+                    app_name, app_name
+                );
+            }
+            return;
+        }
+
+        if matched.len() == 1 {
+            let (path, manifest) = &matched[0];
+            let uuid = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            let name = manifest["name"].as_str().unwrap_or("unknown");
+            let desc = manifest["description"].as_str().unwrap_or("");
+            let version = manifest["version"].as_str().unwrap_or("?");
+            println!("  → Found app: {} (v{})", name, version);
+            println!("    UUID: {}", uuid);
+            println!("    Path: {}", path.display());
+            if !desc.is_empty() {
+                println!("    Description: {}", desc);
+            }
+            println!("    (WASM runtime execution is not yet available in this MVP)");
+        } else {
+            println!("  → Found {} matching apps:", matched.len());
+            for (path, manifest) in &matched {
+                let uuid = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
+                let name = manifest["name"].as_str().unwrap_or("unknown");
+                let version = manifest["version"].as_str().unwrap_or("?");
+                println!("    - {} (v{}) [{}]", name, version, uuid);
+            }
+            println!("    (WASM runtime execution is not yet available in this MVP)");
+        }
+    }
+
+    async fn handle_install_app(&self, intent: &crate::intent::Intent) {
+        let app_name = intent
+            .parameters
+            .get("app_name")
+            .and_then(|v| v.as_str())
+            .or_else(|| intent.parameters.get("name").and_then(|v| v.as_str()))
+            .unwrap_or("");
+
+        if app_name.is_empty() {
+            println!("  → Please specify an app name to install.");
+            return;
+        }
+
+        let store_url = std::env::var("OPENSYSTEM_STORE_URL")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+
+        println!("  → Searching store for '{}'...", app_name);
+
+        let client = reqwest::Client::new();
+        let search_url = format!("{}/api/apps/search?q={}", store_url, app_name);
+
+        let apps: Vec<serde_json::Value> = match client.get(&search_url).send().await {
+            Ok(resp) => match resp.json().await {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!(
+                        "  → Failed to parse store response: {}",
+                        e
+                    );
+                    return;
+                }
+            },
+            Err(e) => {
+                eprintln!(
+                    "  → Could not connect to app store at {}: {}",
+                    store_url, e
+                );
+                println!("    Make sure the app store server is running.");
+                return;
+            }
+        };
+
+        if apps.is_empty() {
+            println!("  → No apps found matching '{}'.", app_name);
+            return;
+        }
+
+        let app = &apps[0];
+        let id = match app["id"].as_str() {
+            Some(id) => id,
+            None => {
+                eprintln!("  → Invalid app entry from store (missing id).");
+                return;
+            }
+        };
+        let name = app["name"].as_str().unwrap_or("unknown");
+        let version = app["version"].as_str().unwrap_or("?");
+
+        println!("  → Found: {} (v{}) — downloading...", name, version);
+
+        let download_url = format!("{}/api/apps/{}/download", store_url, id);
+        let osp_bytes = match client.get(&download_url).send().await {
+            Ok(resp) => match resp.bytes().await {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("  → Failed to download app: {}", e);
+                    return;
+                }
+            },
+            Err(e) => {
+                eprintln!("  → Failed to download app: {}", e);
+                return;
+            }
+        };
+
+        // Save .osp and extract
+        let apps_dir = std::path::Path::new("/apps");
+        if let Err(e) = std::fs::create_dir_all(apps_dir) {
+            eprintln!("  → Failed to create /apps directory: {}", e);
+            return;
+        }
+
+        let install_dir = apps_dir.join(id);
+        if let Err(e) = std::fs::create_dir_all(&install_dir) {
+            eprintln!("  → Failed to create install directory: {}", e);
+            return;
+        }
+
+        // Write the .osp file
+        let osp_path = apps_dir.join(format!("{}.osp", id));
+        if let Err(e) = std::fs::write(&osp_path, &osp_bytes) {
+            eprintln!("  → Failed to save .osp file: {}", e);
+            return;
+        }
+
+        // Extract using tar
+        let install_dir_str = install_dir.to_string_lossy().to_string();
+        let osp_path_str = osp_path.to_string_lossy().to_string();
+        let output = std::process::Command::new("tar")
+            .args([
+                "-xzf",
+                &osp_path_str,
+                "-C",
+                &install_dir_str,
+                "--strip-components=1",
+            ])
+            .output();
+
+        match output {
+            Ok(o) if o.status.success() => {
+                println!("  ✓ Installed '{}' (v{})", name, version);
+                println!("    UUID: {}", id);
+                println!("    Path: {}", install_dir.display());
+            }
+            Ok(o) => {
+                eprintln!(
+                    "  → Extraction failed: {}",
+                    String::from_utf8_lossy(&o.stderr)
+                );
+            }
+            Err(e) => {
+                eprintln!("  → Failed to extract .osp: {}", e);
+            }
         }
     }
 

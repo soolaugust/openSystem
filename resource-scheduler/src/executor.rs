@@ -101,3 +101,103 @@ impl Default for CgroupExecutor {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_app_id_valid() {
+        assert!(validate_app_id("my-app").is_ok());
+        assert!(validate_app_id("app_v2").is_ok());
+        assert!(validate_app_id("com.example.app").is_ok());
+        assert!(validate_app_id("a").is_ok());
+    }
+
+    #[test]
+    fn test_validate_app_id_empty() {
+        assert!(validate_app_id("").is_err());
+    }
+
+    #[test]
+    fn test_validate_app_id_path_traversal() {
+        assert!(validate_app_id("../etc/passwd").is_err());
+        assert!(validate_app_id("app/../../root").is_err());
+        assert!(validate_app_id("..").is_err());
+    }
+
+    #[test]
+    fn test_validate_app_id_slash() {
+        assert!(validate_app_id("app/sub").is_err());
+        assert!(validate_app_id("/absolute").is_err());
+    }
+
+    #[test]
+    fn test_validate_app_id_null_byte() {
+        assert!(validate_app_id("app\0name").is_err());
+    }
+
+    #[test]
+    fn test_validate_app_id_special_chars() {
+        assert!(validate_app_id("app name").is_err()); // space
+        assert!(validate_app_id("app;rm").is_err()); // semicolon
+        assert!(validate_app_id("app&bg").is_err()); // ampersand
+        assert!(validate_app_id("app|pipe").is_err()); // pipe
+    }
+
+    #[test]
+    fn test_app_cgroup_path() {
+        let exec = CgroupExecutor::new();
+        let path = exec.app_cgroup_path("my-app");
+        assert_eq!(
+            path,
+            PathBuf::from("/sys/fs/cgroup/opensystem.slice/my-app")
+        );
+    }
+
+    #[test]
+    fn test_execute_noop() {
+        let exec = CgroupExecutor::new();
+        assert!(exec.execute(&ResourceAction::NoOp).is_ok());
+    }
+
+    #[test]
+    fn test_set_cpu_weight_validates_app_id() {
+        let exec = CgroupExecutor::new();
+        let result = exec.execute(&ResourceAction::SetCpuWeight {
+            app: "../bad".to_string(),
+            weight: 100,
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_set_memory_limit_validates_app_id() {
+        let exec = CgroupExecutor::new();
+        let result = exec.execute(&ResourceAction::SetMemoryLimit {
+            app: "app/bad".to_string(),
+            limit_mb: 512,
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_set_io_weight_validates_app_id() {
+        let exec = CgroupExecutor::new();
+        let result = exec.execute(&ResourceAction::SetIoWeight {
+            app: "app\0bad".to_string(),
+            weight: 100,
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_kill_app_validates_app_id() {
+        let exec = CgroupExecutor::new();
+        let result = exec.execute(&ResourceAction::KillApp {
+            app: "".to_string(),
+            reason: "test".to_string(),
+        });
+        assert!(result.is_err());
+    }
+}

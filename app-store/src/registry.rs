@@ -232,3 +232,164 @@ impl AppRegistry {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn make_test_registry() -> (AppRegistry, TempDir) {
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("test.db");
+        let store_dir = dir.path().join("store");
+        std::fs::create_dir_all(&store_dir).unwrap();
+        let registry = AppRegistry::new(&db_path, &store_dir).unwrap();
+        (registry, dir)
+    }
+
+    fn make_entry(id: &str, name: &str) -> AppEntry {
+        AppEntry {
+            id: id.to_string(),
+            name: name.to_string(),
+            version: "1.0.0".to_string(),
+            description: format!("Description for {}", name),
+            permissions: vec!["net".to_string(), "fs".to_string()],
+            public_key: "abcd1234".to_string(),
+            created_at: 1000,
+            osp_path: format!("/store/{}.osp", id),
+            ui_spec: None,
+        }
+    }
+
+    #[test]
+    fn test_registry_create_and_insert() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("app-1", "Test App");
+        reg.insert(&entry).unwrap();
+    }
+
+    #[test]
+    fn test_registry_insert_and_get_by_id() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("app-1", "Test App");
+        reg.insert(&entry).unwrap();
+
+        let fetched = reg.get_by_id("app-1").unwrap().unwrap();
+        assert_eq!(fetched.id, "app-1");
+        assert_eq!(fetched.name, "Test App");
+        assert_eq!(fetched.version, "1.0.0");
+        assert_eq!(fetched.permissions, vec!["net", "fs"]);
+    }
+
+    #[test]
+    fn test_registry_get_by_id_not_found() {
+        let (reg, _dir) = make_test_registry();
+        let result = reg.get_by_id("nonexistent").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_registry_search_by_name() {
+        let (reg, _dir) = make_test_registry();
+        reg.insert(&make_entry("a1", "Calculator")).unwrap();
+        reg.insert(&make_entry("a2", "Notes App")).unwrap();
+        reg.insert(&make_entry("a3", "Calendar")).unwrap();
+
+        let results = reg.search("Cal").unwrap();
+        assert_eq!(results.len(), 2); // Calculator + Calendar
+    }
+
+    #[test]
+    fn test_registry_search_by_description() {
+        let (reg, _dir) = make_test_registry();
+        reg.insert(&make_entry("a1", "MyApp")).unwrap();
+
+        let results = reg.search("Description").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "a1");
+    }
+
+    #[test]
+    fn test_registry_search_no_match() {
+        let (reg, _dir) = make_test_registry();
+        reg.insert(&make_entry("a1", "Calculator")).unwrap();
+
+        let results = reg.search("zzzzz").unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_registry_list_all() {
+        let (reg, _dir) = make_test_registry();
+        reg.insert(&make_entry("a1", "App One")).unwrap();
+        reg.insert(&make_entry("a2", "App Two")).unwrap();
+
+        let all = reg.list_all().unwrap();
+        assert_eq!(all.len(), 2);
+    }
+
+    #[test]
+    fn test_registry_list_all_empty() {
+        let (reg, _dir) = make_test_registry();
+        let all = reg.list_all().unwrap();
+        assert!(all.is_empty());
+    }
+
+    #[test]
+    fn test_registry_duplicate_id_fails() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("dup-id", "First");
+        reg.insert(&entry).unwrap();
+
+        let entry2 = make_entry("dup-id", "Second");
+        assert!(reg.insert(&entry2).is_err());
+    }
+
+    #[test]
+    fn test_registry_permissions_roundtrip() {
+        let (reg, _dir) = make_test_registry();
+        let mut entry = make_entry("a1", "Perms App");
+        entry.permissions = vec![
+            "net".to_string(),
+            "fs.read".to_string(),
+            "camera".to_string(),
+        ];
+        reg.insert(&entry).unwrap();
+
+        let fetched = reg.get_by_id("a1").unwrap().unwrap();
+        assert_eq!(fetched.permissions, vec!["net", "fs.read", "camera"]);
+    }
+
+    #[test]
+    fn test_registry_empty_permissions() {
+        let (reg, _dir) = make_test_registry();
+        let mut entry = make_entry("a1", "No Perms");
+        entry.permissions = vec![];
+        reg.insert(&entry).unwrap();
+
+        let fetched = reg.get_by_id("a1").unwrap().unwrap();
+        assert!(fetched.permissions.is_empty());
+    }
+
+    #[test]
+    fn test_registry_ui_spec_roundtrip() {
+        let (reg, _dir) = make_test_registry();
+        let mut entry = make_entry("a1", "UI App");
+        entry.ui_spec = Some(r#"{"layout":"vstack"}"#.to_string());
+        reg.insert(&entry).unwrap();
+
+        let fetched = reg.get_by_id("a1").unwrap().unwrap();
+        assert_eq!(fetched.ui_spec.as_deref(), Some(r#"{"layout":"vstack"}"#));
+    }
+
+    #[test]
+    fn test_registry_special_chars_in_name() {
+        let (reg, _dir) = make_test_registry();
+        let mut entry = make_entry("a1", "App's \"Special\" Name");
+        entry.description = "Contains 'quotes' and \"doubles\"".to_string();
+        reg.insert(&entry).unwrap();
+
+        let fetched = reg.get_by_id("a1").unwrap().unwrap();
+        assert_eq!(fetched.name, "App's \"Special\" Name");
+    }
+}

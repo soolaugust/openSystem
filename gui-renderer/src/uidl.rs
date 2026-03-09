@@ -169,4 +169,114 @@ mod tests {
         let doc2 = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "b"}}"#).unwrap();
         assert_ne!(doc1.hash(), doc2.hash());
     }
+
+    #[test]
+    fn test_parse_invalid_json() {
+        let result = UidlDocument::parse("not json");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_empty_string() {
+        let result = UidlDocument::parse("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_missing_layout() {
+        let result = UidlDocument::parse(r#"{"theme": {}}"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_widget_count_single() {
+        let doc = UidlDocument::parse(r#"{"layout": {"type": "text", "content": "hi"}}"#).unwrap();
+        assert_eq!(doc.widget_count(), 1);
+    }
+
+    #[test]
+    fn test_widget_count_nested() {
+        let json = r#"{
+            "layout": {
+                "type": "vstack",
+                "children": [
+                    {"type": "text", "content": "a"},
+                    {"type": "hstack", "children": [
+                        {"type": "button", "label": "b", "action": "click"},
+                        {"type": "input"}
+                    ]},
+                    {"type": "spacer"}
+                ]
+            }
+        }"#;
+        let doc = UidlDocument::parse(json).unwrap();
+        // vstack(1) + text(1) + hstack(1) + button(1) + input(1) + spacer(1) = 6
+        assert_eq!(doc.widget_count(), 6);
+    }
+
+    #[test]
+    fn test_widget_types_serde() {
+        let widgets_json = vec![
+            r#"{"type": "text", "content": "hello"}"#,
+            r#"{"type": "button", "label": "Ok", "action": "ok"}"#,
+            r#"{"type": "input", "placeholder": "type here"}"#,
+            r#"{"type": "spacer", "size": 16}"#,
+            r#"{"type": "vstack", "gap": 8, "children": []}"#,
+            r#"{"type": "hstack", "children": []}"#,
+        ];
+        for json in widgets_json {
+            let widget: Widget = serde_json::from_str(json).unwrap();
+            let back = serde_json::to_string(&widget).unwrap();
+            let reparsed: Widget = serde_json::from_str(&back).unwrap();
+            assert_eq!(widget, reparsed);
+        }
+    }
+
+    #[test]
+    fn test_document_with_theme() {
+        let json = r##"{
+            "layout": {"type": "text", "content": "themed"},
+            "theme": {
+                "primary_color": "#FF0000",
+                "background_color": "#FFFFFF",
+                "font_family": "Inter",
+                "font_size_base": 14
+            }
+        }"##;
+        let doc = UidlDocument::parse(json).unwrap();
+        let theme = doc.theme.unwrap();
+        assert_eq!(theme.primary_color.as_deref(), Some("#FF0000"));
+        assert_eq!(theme.font_size_base, Some(14));
+    }
+
+    #[test]
+    fn test_document_with_metadata() {
+        let json = r#"{
+            "layout": {"type": "text", "content": "meta"},
+            "metadata": {"author": "test", "version": "1.0"}
+        }"#;
+        let doc = UidlDocument::parse(json).unwrap();
+        let meta = doc.metadata.unwrap();
+        assert_eq!(meta.get("author").unwrap(), "test");
+    }
+
+    #[test]
+    fn test_text_style() {
+        let json = r#"{
+            "layout": {
+                "type": "text",
+                "content": "styled",
+                "style": {"font_size": 24, "color": "red", "bold": true, "align": "center"}
+            }
+        }"#;
+        let doc = UidlDocument::parse(json).unwrap();
+        if let Widget::Text { style, .. } = &doc.layout {
+            let s = style.as_ref().unwrap();
+            assert_eq!(s.font_size, Some(24));
+            assert_eq!(s.bold, Some(true));
+            assert_eq!(s.align, Some(TextAlign::Center));
+        } else {
+            panic!("expected Text widget");
+        }
+    }
 }

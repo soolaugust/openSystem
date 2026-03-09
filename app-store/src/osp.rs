@@ -106,4 +106,63 @@ mod tests {
         let data = make_osp_bytes(&[("manifest.json", manifest)]);
         assert!(OspPackage::from_bytes(&data).is_err());
     }
+
+    #[test]
+    fn test_missing_manifest_fails() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let data = make_osp_bytes(&[("app.wasm", wasm)]);
+        assert!(OspPackage::from_bytes(&data).is_err());
+    }
+
+    #[test]
+    fn test_osp_with_signature() {
+        let manifest = br#"{"name":"signed","version":"1.0"}"#;
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let sig = b"fake-signature-data";
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+            ("signature.sig", sig),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.signature.is_some());
+        assert_eq!(pkg.signature.unwrap(), sig);
+    }
+
+    #[test]
+    fn test_osp_without_optional_files() {
+        let manifest = br#"{"name":"minimal","version":"0.1"}"#;
+        let wasm = b"\x00asm";
+        let data = make_osp_bytes(&[("app.wasm", wasm), ("manifest.json", manifest)]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.prompt_txt.is_empty());
+        assert!(pkg.icon_svg.is_empty());
+        assert!(pkg.signature.is_none());
+    }
+
+    #[test]
+    fn test_osp_ignores_unknown_files() {
+        let manifest = br#"{"name":"test","version":"0.1"}"#;
+        let wasm = b"\x00asm";
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+            ("unknown.txt", b"should be ignored"),
+            ("readme.md", b"also ignored"),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert_eq!(pkg.wasm_bytes, wasm);
+    }
+
+    #[test]
+    fn test_osp_invalid_data() {
+        let result = OspPackage::from_bytes(b"not a valid tar.gz");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_osp_empty_data() {
+        let result = OspPackage::from_bytes(b"");
+        assert!(result.is_err());
+    }
 }

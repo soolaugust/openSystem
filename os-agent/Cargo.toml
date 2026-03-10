@@ -29,6 +29,7 @@ wasmtime = "42.0.1"
 wasmtime-wasi = "42.0.1"
 gui-renderer = { path = "../gui-renderer" }
 url = "2"
+ureq = "2"
 
 [dev-dependencies]
 wiremock = "0.6"

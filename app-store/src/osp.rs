@@ -13,6 +13,26 @@ pub struct OspPackage {
 }
 
 impl OspPackage {
+    /// Verify the package signature against a public key.
+    ///
+    /// Returns `Ok(())` if the signature is valid, or an error if:
+    /// - The package has no signature
+    /// - The signature is not valid hex
+    /// - The signature verification fails
+    pub fn verify_signature(&self, public_key_hex: &str) -> Result<()> {
+        let sig_bytes = self
+            .signature
+            .as_ref()
+            .context("package has no signature")?;
+        let sig_hex = String::from_utf8_lossy(sig_bytes).trim().to_string();
+        crate::signing::verify_signature(
+            public_key_hex,
+            &sig_hex,
+            &self.wasm_bytes,
+            &self.manifest_json,
+        )
+    }
+
     /// Parse a .osp file (tar.gz) from bytes.
     pub fn from_bytes(data: &[u8]) -> Result<Self> {
         let cursor = Cursor::new(data);
@@ -164,5 +184,94 @@ mod tests {
     fn test_osp_empty_data() {
         let result = OspPackage::from_bytes(b"");
         assert!(result.is_err());
+    }
+
+    // ── Signature verification tests ─────────────────────────────────────────
+
+    #[test]
+    fn test_verify_signature_valid() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let manifest = br#"{"name":"signed-app","version":"1.0"}"#;
+        let (priv_hex, pub_hex) = crate::signing::generate_keypair();
+        let sig_hex = crate::signing::sign_content(&priv_hex, wasm, manifest).unwrap();
+
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+            ("signature.sig", sig_hex.as_bytes()),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.verify_signature(&pub_hex).is_ok());
+    }
+
+    #[test]
+    fn test_verify_signature_invalid_rejects() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let manifest = br#"{"name":"bad-sig","version":"1.0"}"#;
+        let (_priv_hex, pub_hex) = crate::signing::generate_keypair();
+
+        // Use a signature from a different keypair
+        let (other_priv, _) = crate::signing::generate_keypair();
+        let wrong_sig = crate::signing::sign_content(&other_priv, wasm, manifest).unwrap();
+
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+            ("signature.sig", wrong_sig.as_bytes()),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.verify_signature(&pub_hex).is_err());
+    }
+
+    #[test]
+    fn test_verify_signature_no_signature_fails() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let manifest = br#"{"name":"unsigned","version":"1.0"}"#;
+        let (_, pub_hex) = crate::signing::generate_keypair();
+
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", manifest),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        let result = pkg.verify_signature(&pub_hex);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no signature"));
+    }
+
+    #[test]
+    fn test_verify_signature_tampered_wasm_fails() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let manifest = br#"{"name":"tampered","version":"1.0"}"#;
+        let (priv_hex, pub_hex) = crate::signing::generate_keypair();
+        let sig_hex = crate::signing::sign_content(&priv_hex, wasm, manifest).unwrap();
+
+        // Tamper: use different wasm bytes in the package
+        let tampered_wasm = b"\x00asm\x02\x00\x00\x00";
+        let data = make_osp_bytes(&[
+            ("app.wasm", tampered_wasm),
+            ("manifest.json", manifest),
+            ("signature.sig", sig_hex.as_bytes()),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.verify_signature(&pub_hex).is_err());
+    }
+
+    #[test]
+    fn test_verify_signature_tampered_manifest_fails() {
+        let wasm = b"\x00asm\x01\x00\x00\x00";
+        let manifest = br#"{"name":"original","version":"1.0"}"#;
+        let (priv_hex, pub_hex) = crate::signing::generate_keypair();
+        let sig_hex = crate::signing::sign_content(&priv_hex, wasm, manifest).unwrap();
+
+        // Tamper: change manifest in the package
+        let tampered_manifest = br#"{"name":"hacked","version":"1.0"}"#;
+        let data = make_osp_bytes(&[
+            ("app.wasm", wasm),
+            ("manifest.json", tampered_manifest),
+            ("signature.sig", sig_hex.as_bytes()),
+        ]);
+        let pkg = OspPackage::from_bytes(&data).unwrap();
+        assert!(pkg.verify_signature(&pub_hex).is_err());
     }
 }

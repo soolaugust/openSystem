@@ -212,4 +212,42 @@ mod tests {
         let d = content_digest(b"", b"");
         assert_eq!(d.len(), 32); // SHA256 always 32 bytes
     }
+
+    #[test]
+    fn test_verify_signature_wrong_public_key_length() {
+        let result = verify_signature("aabb", "cc", b"w", b"m");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("32 bytes"));
+    }
+
+    #[test]
+    fn test_sign_content_large_payload() {
+        let (priv_hex, pub_hex) = generate_keypair();
+        let big_wasm = vec![0xAA_u8; 1024 * 1024]; // 1 MiB
+        let manifest = b"large payload test";
+        let sig = sign_content(&priv_hex, &big_wasm, manifest).unwrap();
+        verify_signature(&pub_hex, &sig, &big_wasm, manifest).unwrap();
+    }
+
+    #[test]
+    fn test_derive_public_key_wrong_length() {
+        let result = derive_public_key("aabbccdd");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_content_digest_order_matters() {
+        // Swapping wasm and manifest should give different digest
+        let d1 = content_digest(b"aaa", b"bbb");
+        let d2 = content_digest(b"bbb", b"aaa");
+        assert_ne!(d1, d2);
+    }
+
+    #[test]
+    fn test_signature_hex_length() {
+        let (priv_hex, _) = generate_keypair();
+        let sig = sign_content(&priv_hex, b"w", b"m").unwrap();
+        // Ed25519 signature: 64 bytes = 128 hex chars
+        assert_eq!(sig.len(), 128);
+    }
 }

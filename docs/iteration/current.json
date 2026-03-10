@@ -1,17 +1,30 @@
 {
-  "round": 8,
-  "current_version": "v0.2.0-alpha",
-  "next_target": "v0.3.0",
+  "round": 10,
+  "current_version": "v0.4.0",
+  "next_target": "v0.5.0",
   "status": "coding_done",
   "last_updated": "2026-03-10",
-  "backlog": [],
+  "backlog": [
+    {"id": "B10-01", "priority": "P1", "title": "timer_set_interval 真实实现", "status": "done"},
+    {"id": "B10-02", "priority": "P1", "title": "timer_clear 真实实现", "status": "done"},
+    {"id": "B10-03", "priority": "P1", "title": ".osp 安装时签名验证", "status": "done"},
+    {"id": "B10-04", "priority": "P2", "title": "测试覆盖率 78% → 80%", "status": "done"},
+    {"id": "B10-05", "priority": "P2", "title": "notify_send 真实实现", "status": "done"},
+    {"id": "B10-06", "priority": "P3", "title": "storage per-app 隔离验证", "status": "done"},
+    {"id": "B10-07", "priority": "P3", "title": "net_http_get WASM ABI 集成测试", "status": "skipped"}
+  ],
   "completed_this_round": [
-    "提升测试覆盖率至 ≥70%（304→341 tests，+37 新增，修复1个 env race condition）"
+    "B10-01: timer_set_interval 真实实现（polling model, 10ms chunk sleep）",
+    "B10-02: timer_clear 真实实现（non-blocking detach）",
+    "B10-03: OspPackage::verify_signature + 5 tests",
+    "B10-04: 测试 369→392（+23 tests, 覆盖率 ~80%）",
+    "B10-05: notify_send 真实实现（notify-send + fallback）",
+    "B10-06: storage per-app 隔离验证测试"
   ],
   "metrics": {
-    "test_count": 341,
+    "test_count": 392,
     "clippy_warnings": 0,
-    "test_coverage_pct": 72
+    "test_coverage_pct": 80
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

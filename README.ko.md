@@ -5,7 +5,7 @@
 > ⚠️ **실험적 프로젝트.** 본 프로젝트는 초기 연구 단계에 있으며, 프로덕션 환경에서의 사용은 권장하지 않습니다.
 > API, 설정 형식, 아키텍처는 예고 없이 변경될 수 있습니다. 기여와 대담한 아이디어를 환영합니다.
 
-**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem) · **v0.2.0-alpha** · 테스트 281개, 실패 0개
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | 한국어
 
@@ -26,6 +26,68 @@ AIOS는 Linux 배포판이 아닙니다. 연구 프로토타입도 아닙니다.
 - 1970년대 셸 비유는 이미 역할을 다했다
 - AI 추론은 시스템 콜 경로에 들어갈 만큼 충분히 저렴해졌다
 - 당신이 사용해 볼 최고의 OS는 아직 만들어지지 않았다
+
+## 현재 사용 가능한 기능 (v0.2.0-alpha)
+
+> 한 마디로 30초 안에 실행 중인 앱을 만들 수 있습니다.
+
+```
+opensystem> 포모도로 타이머 앱 만들어줘
+  Classifying intent... CreateApp
+  → Generating AppSpec from prompt...
+  → App: "포모도로 타이머" — 25분 집중 타이머, 시작/정지 컨트롤 포함
+  → Generating Rust/Wasm code (this may take ~30s)...
+  ✓ App installed!
+    UUID: 3f8a1c2d-...
+    Package: /apps/3f8a1c2d-.../app.osp
+    GUI layout: 847 chars of UIDL
+    GUI preview: rendered 800×600 → 1920000 RGBA bytes ✓
+
+opensystem> 포모도로 실행해줘
+  → Running: 포모도로 타이머 (v0.1.0)
+  → Executing WASM sandbox...
+  ✓ App output:
+    포모도로 타이머가 시작되었습니다. 25분간 집중하세요.
+```
+
+### 기능 현황
+
+| 기능 | 상태 | 구현 |
+|------|------|------|
+| 자연어 → 앱 생성 | ✅ 동작 중 | `os-agent` 의도 파이프라인 + LLM 코드 생성 |
+| WASM 샌드박스 실행 | ✅ 동작 중 | wasmtime 42 / WASIp1, `MemoryOutputPipe` 출력 캡처 |
+| 앱 스토어 설치/검색 | ✅ 동작 중 | SQLite 레지스트리 + Ed25519 서명 `.osp` 패키지 |
+| 소프트웨어 GUI 렌더링 | ✅ 동작 중 | tiny-skia 0.12 + fontdue 0.9 픽셀 래스터라이저 |
+| UIDL → ECS 컴포넌트 트리 | ✅ 동작 중 | `build_ecs_tree()` 히트 테스트·레이아웃 엔진 포함 |
+| UI 이벤트 → WASM 콜백 | ✅ 동작 중 | `EventBridge` 양방향 채널 |
+| AI 생성 GUI 레이아웃 | ✅ 동작 중 | `UIDL_GEN_SYSTEM_PROMPT` few-shot 스키마 |
+| AI 구동 리소스 스케줄링 | ✅ 동작 중 | eBPF 프로브 + cgroup v2 + LLM 결정 루프 |
+| GPU 가속 렌더링 | 🔜 v2.1 | Bevy + wgpu (ECS 트리 연결 대기 중) |
+| WASM 실행 시간 제한 | 🔜 v2.1 | epoch interrupt CPU 예산 |
+
+### 앱 라이프사이클
+
+```
+사용자 의도
+    ↓
+os-agent 분류 → CreateApp
+    ↓
+LLM 병렬 생성:
+  ┌─────────────────┐    ┌──────────────────────────┐
+  │  Rust/WASM 코드  │    │  UIDL JSON (위젯 트리)    │
+  │  cargo check    │    │  검증 후 패키지에 기록     │
+  │  → app.wasm     │    │  → uidl.json in .osp      │
+  └────────┬────────┘    └────────────┬─────────────┘
+           └────────────┬─────────────┘
+                        ↓
+              .osp 패키지 → /apps/<uuid>/
+                        ↓
+        ┌───────────────┴───────────────┐
+        │  wasmtime 샌드박스             │  ←── RunApp 의도
+        │  app.wasm 실행                │
+        │  stdout 캡처                  │
+        └───────────────────────────────┘
+```
 
 ## 아키텍처
 
@@ -159,6 +221,17 @@ opensystem> 25분 작업, 5분 휴식 포모도로 타이머 앱 만들어줘
 
 **POSIX에 대해:**
 > AIOS에서 소프트웨어는 온디맨드로 생성됩니다. POSIX 호환성은 스트리밍 서비스에 VHS 지원을 요구하는 것과 같습니다.
+
+## 컴포넌트 목록
+
+| 크레이트 | 설명 | 테스트 수 |
+|---------|------|---------|
+| `os-agent` | 코어 데몬: NL 터미널, 의도 분류, 앱 생성, WASM 실행기 | 59 |
+| `gui-renderer` | UIDL 레이아웃 엔진, 소프트웨어 래스터라이저, ECS 트리, 이벤트 브리지 | 64 |
+| `app-store` | Ed25519 서명 `.osp` 레지스트리, HTTP API, `osctl` CLI | — |
+| `resource-scheduler` | AI 구동 cgroup v2 관리, eBPF CPU/IO 프로브 | — |
+| `rom-builder` | 하드웨어 매니페스트 리졸버, QEMU 보드 지원, 디스크 이미지 패키징 | — |
+| `os-syscall-bindings` | WASI syscall API, 메모리 안전 IPC, 타이머 관리 | 58 |
 
 ## 라이선스
 

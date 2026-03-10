@@ -5,7 +5,7 @@
 > ⚠️ **实验性项目。** 本项目处于早期研究阶段，不适合生产使用。
 > API、配置格式和架构可能随时变更，欢迎贡献代码和各种大胆想法。
 
-**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem) · **v0.2.0-alpha** · 281 个测试，0 个失败
 
 [English](README.md) | 简体中文 | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -26,6 +26,68 @@ openSystem 不是 Linux 发行版，也不是研究原型。
 - 1970 年代的 Shell 隐喻早该退出历史舞台
 - AI 推理已经足够便宜，可以进入系统调用路径
 - 你用过的最好的操作系统还没有被构建出来
+
+## 当前可用功能（v0.2.0-alpha）
+
+> 说一句话，得到一个运行中的应用——30 秒内。
+
+```
+opensystem> 创建一个番茄钟计时器
+  Classifying intent... CreateApp
+  → Generating AppSpec from prompt...
+  → App: "番茄钟计时器" — 25 分钟专注计时，含启动/停止控件
+  → Generating Rust/Wasm code (this may take ~30s)...
+  ✓ App installed!
+    UUID: 3f8a1c2d-...
+    Package: /apps/3f8a1c2d-.../app.osp
+    GUI layout: 847 chars of UIDL
+    GUI preview: rendered 800×600 → 1920000 RGBA bytes ✓
+
+opensystem> 运行番茄钟
+  → Running: 番茄钟计时器 (v0.1.0)
+  → Executing WASM sandbox...
+  ✓ App output:
+    番茄钟已启动，专注 25 分钟。
+```
+
+### 功能状态
+
+| 功能 | 状态 | 实现 |
+|------|------|------|
+| 自然语言 → 应用创建 | ✅ 可用 | `os-agent` 意图流水线 + LLM 代码生成 |
+| WASM 沙箱执行 | ✅ 可用 | wasmtime 42 / WASIp1，`MemoryOutputPipe` 捕获输出 |
+| App Store 安装/搜索 | ✅ 可用 | SQLite 注册表 + Ed25519 签名 `.osp` 包 |
+| 软件 GUI 渲染 | ✅ 可用 | tiny-skia 0.12 + fontdue 0.9 像素光栅化 |
+| UIDL → ECS 组件树 | ✅ 可用 | `build_ecs_tree()` 含命中测试和布局引擎 |
+| UI 事件 → WASM 回调 | ✅ 可用 | `EventBridge` 双向通道 |
+| AI 生成 GUI 布局 | ✅ 可用 | `UIDL_GEN_SYSTEM_PROMPT` few-shot 约束 |
+| AI 驱动资源调度 | ✅ 可用 | eBPF 探针 + cgroup v2 + LLM 决策循环 |
+| GPU 加速渲染 | 🔜 v2.1 | Bevy + wgpu（ECS 树已就绪待接入）|
+| WASM 执行时间限制 | 🔜 v2.1 | epoch interrupt CPU 预算 |
+
+### 应用生命周期
+
+```
+用户意图
+    ↓
+os-agent 分类 → CreateApp
+    ↓
+LLM 并行生成：
+  ┌─────────────────┐    ┌──────────────────────────┐
+  │  Rust/WASM 代码  │    │  UIDL JSON（Widget 树）   │
+  │  cargo check    │    │  校验后打包写入            │
+  │  → app.wasm     │    │  → uidl.json in .osp      │
+  └────────┬────────┘    └────────────┬─────────────┘
+           └────────────┬─────────────┘
+                        ↓
+              .osp 包 → /apps/<uuid>/
+                        ↓
+        ┌───────────────┴───────────────┐
+        │  wasmtime 沙箱                │  ←── RunApp 意图
+        │  app.wasm 执行                │
+        │  stdout 捕获输出              │
+        └───────────────────────────────┘
+```
 
 ## 架构
 
@@ -158,6 +220,17 @@ opensystem> 创建一个番茄钟 App，25分钟工作，5分钟休息
 
 **关于 POSIX：**
 > 在 openSystem 中，软件是按需生成的。POSIX 兼容性就像坚持让流媒体平台支持 VHS 一样。
+
+## 各组件一览
+
+| Crate | 功能说明 | 测试数 |
+|-------|---------|--------|
+| `os-agent` | 核心守护进程：NL 终端、意图分类、应用生成、WASM 运行 | 59 |
+| `gui-renderer` | UIDL 布局引擎、软件光栅化、ECS 树、事件桥 | 64 |
+| `app-store` | Ed25519 签名 `.osp` 注册表、HTTP API、`osctl` CLI | — |
+| `resource-scheduler` | AI 驱动 cgroup v2 管理、eBPF CPU/IO 探针 | — |
+| `rom-builder` | 硬件清单解析器、QEMU 板级支持、磁盘镜像打包 | — |
+| `os-syscall-bindings` | WASI 系统调用 API、内存安全 IPC、定时器管理 | 58 |
 
 ## 许可证
 

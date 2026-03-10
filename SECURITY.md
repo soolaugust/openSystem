@@ -75,17 +75,18 @@ The app store (`POST /api/apps/upload`) supports optional API key authentication
 
 ---
 
-## v2.0 Security Audit (Round 12)
+## Security Audit — v0.3.0 (Resolved) and v0.4.0 (Current)
 
 ### WASM Runtime (WasmRuntime — wasmtime 42)
 
 | Risk | Severity | Status |
 |------|----------|--------|
 | Sandbox escape (wasmtime CVE) | Medium | Monitor RUSTSEC; pin wasmtime version |
-| Infinite loop / CPU spin | Medium | **Deferred v2.1** — add epoch-interrupt budget |
+| Infinite loop / CPU spin | Medium | ✅ **Resolved v0.3.0** — 30-second epoch-interrupt budget |
 | stdout/stderr flooding | Low | Mitigated: `MemoryOutputPipe` capped at 64 MiB |
-| Host function abuse (`__opensystem_*`) | Low | All stubs in v2.0 — no real I/O exposed |
-| Filesystem access from WASM | N/A | No `preopened_dirs` granted; WASI stdio only |
+| Host function abuse (`__opensystem_*`) | Low | Partially mitigated; storage/net host fns now real |
+| Filesystem access from WASM (preopened dirs) | N/A | No `preopened_dirs` granted; WASI stdio only |
+| Epoch ticker thread leak on early return | Low | ✅ **Resolved v0.4.0** — RAII `EpochTicker` Drop guard |
 
 ### AppGenerator (LLM → cargo → tar → /apps)
 
@@ -100,13 +101,31 @@ The app store (`POST /api/apps/upload`) supports optional API key authentication
 
 | Risk | Severity | Status |
 |------|----------|--------|
-| MITM on `.osp` download | Medium | **Deferred v2.1** — enforce HTTPS store URL |
-| Malicious `id` field used as fs path | Low | **Deferred v2.1** — add `[a-zA-Z0-9_-]+` validation |
+| MITM on `.osp` download | Medium | ✅ **Resolved v0.3.0** — HTTPS enforced via `validate_store_url` |
+| Malicious `id` field used as fs path | Low | ✅ **Resolved v0.3.0** — App ID validated against `^[a-zA-Z0-9_-]+$` |
 
-### Deferred to v2.1
+### `__opensystem_net_http_get` URL Allowlist (v0.4.0)
 
-1. `Engine` epoch interruption — cap WASM execution wall time.
-2. HTTPS enforcement for `OPENSYSTEM_STORE_URL`.
-3. App ID regex validation before use as filesystem path component.
-4. `__opensystem_net_http_get` real impl must go through a host-side URL allowlist.
-5. `.osp` package code signing and store-side verification.
+The `net_http_get` host function enforces the following rules before making
+any outbound request:
+
+| Check | Rule |
+|-------|------|
+| Scheme | Only `https://` is allowed; `http://`, `file://`, `ftp://`, etc. are rejected |
+| Host | URL must have a non-empty host component |
+| Redirects | Redirects are not followed (redirect count = 0) |
+| Timeout | Request aborted after 10 seconds |
+| Response size | Response body capped at 4 MiB |
+| Error reporting | On failure, the error message is written to the `err_len_ptr` region in WASM memory |
+
+This design prevents SSRF to private networks via HTTP redirection chains and
+limits the impact of a compromised WASM module making unbounded outbound requests.
+
+### Known Limitations
+
+1. No per-app network ACL — any WASM app can reach any HTTPS endpoint. A future
+   version will add a per-app URL allowlist in the app manifest.
+2. `.osp` package code signing and store-side verification — deferred to v0.5.
+3. No rate limiting on outbound HTTP from WASM apps.
+4. `storage_read` / `storage_write` use a fixed `"default"` app ID; per-app
+   isolation is deferred until per-app execution context is wired.

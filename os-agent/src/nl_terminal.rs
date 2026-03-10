@@ -4,6 +4,7 @@ use crate::intent::{classify, IntentKind};
 use crate::wasm_runtime::WasmRuntime;
 use anyhow::Result;
 use rustyline::DefaultEditor;
+use url::Url;
 
 /// Natural-language terminal that classifies user input into intents and dispatches actions.
 pub struct NlTerminal {
@@ -299,6 +300,11 @@ impl NlTerminal {
         let store_url = std::env::var("OPENSYSTEM_STORE_URL")
             .unwrap_or_else(|_| "http://localhost:8080".to_string());
 
+        if let Err(e) = validate_store_url(&store_url) {
+            eprintln!("  → Invalid store URL: {}", e);
+            return;
+        }
+
         println!("  → Searching store for '{}'...", app_name);
 
         let client = reqwest::Client::new();
@@ -464,5 +470,122 @@ impl NlTerminal {
             Ok(response) => println!("  {}", response.trim()),
             Err(e) => eprintln!("  Error: {}", e),
         }
+    }
+}
+
+/// Validate that a store URL is safe to use (no injection, no SSRF via dangerous schemes).
+///
+/// Allowed schemes: `https` always; `http` only when `OPENSYSTEM_ALLOW_HTTP=1`.
+pub fn validate_store_url(raw: &str) -> Result<Url> {
+    let parsed = Url::parse(raw)
+        .map_err(|e| anyhow::anyhow!("not a valid URL: {}", e))?;
+
+    match parsed.scheme() {
+        "https" => {}
+        "http" => {
+            let allow_http = std::env::var("OPENSYSTEM_ALLOW_HTTP")
+                .map(|v| v == "1")
+                .unwrap_or(false);
+            if !allow_http {
+                anyhow::bail!(
+                    "HTTP is not allowed in production. Set OPENSYSTEM_ALLOW_HTTP=1 to permit it."
+                );
+            }
+            tracing::warn!("Using insecure HTTP for app store (allowed by OPENSYSTEM_ALLOW_HTTP)");
+        }
+        scheme => {
+            anyhow::bail!("disallowed URL scheme '{}' — only https (or http for testing) is allowed", scheme);
+        }
+    }
+
+    // Block URLs with userinfo (user:pass@host) which can be used for SSRF
+    if parsed.username() != "" || parsed.password().is_some() {
+        anyhow::bail!("URL must not contain userinfo (user:pass@host)");
+    }
+
+    // Must have a host
+    if parsed.host().is_none() {
+        anyhow::bail!("URL must have a host");
+    }
+
+    Ok(parsed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_store_url_https_ok() {
+        let result = validate_store_url("https://store.example.com/api");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_store_url_http_blocked_by_default() {
+        std::env::remove_var("OPENSYSTEM_ALLOW_HTTP");
+        let result = validate_store_url("http://localhost:8080");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("HTTP is not allowed"));
+    }
+
+    #[test]
+    fn test_validate_store_url_http_allowed_with_env() {
+        std::env::set_var("OPENSYSTEM_ALLOW_HTTP", "1");
+        let result = validate_store_url("http://localhost:8080");
+        assert!(result.is_ok());
+        std::env::remove_var("OPENSYSTEM_ALLOW_HTTP");
+    }
+
+    #[test]
+    fn test_validate_store_url_javascript_scheme_rejected() {
+        let result = validate_store_url("javascript:alert(1)");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disallowed URL scheme"));
+    }
+
+    #[test]
+    fn test_validate_store_url_file_scheme_rejected() {
+        let result = validate_store_url("file:///etc/passwd");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disallowed URL scheme"));
+    }
+
+    #[test]
+    fn test_validate_store_url_ftp_scheme_rejected() {
+        let result = validate_store_url("ftp://evil.com/payload");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_store_url_command_injection_rejected() {
+        let result = validate_store_url("http://; rm -rf /");
+        // url::Url::parse will fail on this
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_store_url_empty_rejected() {
+        let result = validate_store_url("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_store_url_no_host_rejected() {
+        let result = validate_store_url("https://");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_store_url_userinfo_rejected() {
+        let result = validate_store_url("https://user:pass@evil.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("userinfo"));
+    }
+
+    #[test]
+    fn test_validate_store_url_data_scheme_rejected() {
+        let result = validate_store_url("data:text/html,<script>alert(1)</script>");
+        assert!(result.is_err());
     }
 }

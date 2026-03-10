@@ -57,8 +57,26 @@ impl AppRegistry {
         })
     }
 
+    /// Validate that an app ID matches the safe format: `^[a-zA-Z0-9_-]+$`.
+    fn validate_app_id(id: &str) -> Result<()> {
+        if id.is_empty() {
+            anyhow::bail!("app ID must not be empty");
+        }
+        if id.len() > 255 {
+            anyhow::bail!("app ID too long (max 255 characters)");
+        }
+        if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+            anyhow::bail!(
+                "app ID '{}' contains invalid characters — only [a-zA-Z0-9_-] allowed",
+                id
+            );
+        }
+        Ok(())
+    }
+
     /// Insert a new app entry into the registry.
     pub fn insert(&self, entry: &AppEntry) -> Result<()> {
+        Self::validate_app_id(&entry.id)?;
         let permissions_json =
             serde_json::to_string(&entry.permissions).context("failed to serialize permissions")?;
         self.conn.execute(
@@ -139,6 +157,7 @@ impl AppRegistry {
 
     /// Look up an app by its unique ID.
     pub fn get_by_id(&self, id: &str) -> Result<Option<AppEntry>> {
+        Self::validate_app_id(id)?;
         let mut stmt = self.conn.prepare(
             "SELECT id, name, version, description, permissions, public_key, created_at, osp_path, ui_spec
              FROM apps WHERE id = ?1",
@@ -407,5 +426,49 @@ mod tests {
 
         let fetched = reg.get_by_id("a1").unwrap().unwrap();
         assert_eq!(fetched.name, "App's \"Special\" Name");
+    }
+
+    #[test]
+    fn test_app_id_path_traversal_rejected() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("../etc/passwd", "Evil App");
+        assert!(reg.insert(&entry).is_err());
+    }
+
+    #[test]
+    fn test_app_id_slash_rejected() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("foo/bar", "Slash App");
+        assert!(reg.insert(&entry).is_err());
+    }
+
+    #[test]
+    fn test_app_id_empty_rejected() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("", "No ID App");
+        assert!(reg.insert(&entry).is_err());
+    }
+
+    #[test]
+    fn test_app_id_valid_formats() {
+        let (reg, _dir) = make_test_registry();
+        // These should all succeed
+        reg.insert(&make_entry("my-app", "Dash")).unwrap();
+        reg.insert(&make_entry("my_app_2", "Underscore")).unwrap();
+        reg.insert(&make_entry("APP123", "Upper")).unwrap();
+    }
+
+    #[test]
+    fn test_get_by_id_validates_id() {
+        let (reg, _dir) = make_test_registry();
+        assert!(reg.get_by_id("../etc/passwd").is_err());
+        assert!(reg.get_by_id("foo/bar").is_err());
+    }
+
+    #[test]
+    fn test_app_id_space_rejected() {
+        let (reg, _dir) = make_test_registry();
+        let entry = make_entry("bad app", "Space App");
+        assert!(reg.insert(&entry).is_err());
     }
 }

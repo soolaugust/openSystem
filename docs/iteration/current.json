@@ -1,36 +1,29 @@
 {
-  "round": 5,
-  "current_version": "v0.5.0",
-  "next_target": "v1.0.0",
-  "status": "coded",
-  "last_updated": "2026-03-09",
-  "backlog": [],
+  "round": 7,
+  "current_version": "v0.2.0-alpha",
+  "next_target": "v0.3.0",
+  "status": "coding_done",
+  "last_updated": "2026-03-10",
+  "backlog": [
+    "修复 store_url URL 注入/SSRF 漏洞",
+    "实现 storage_read/storage_write 真实 host function",
+    "提升测试覆盖率至 ≥70%",
+    "强制 HTTPS 连接 App Store",
+    "WASM epoch interruption 防无限循环",
+    "App ID 格式验证防路径遍历"
+  ],
   "completed_this_round": [
-    "接线 os-agent RunApp：从 /apps 目录查找并运行已安装的 WASM 应用",
-    "接线 os-agent InstallApp：调用 app-store API 搜索并下载安装应用",
-    "为 os-agent intent.rs 添加单元测试",
-    "为 resource-scheduler types.rs 和 executor.rs 添加单元测试",
-    "为 os-agent app_generator.rs 的 AppSpec 和 utils.rs 的 extract_json 添加单元测试",
-    "osctl 单元测试：resolve_private_key + add_signature_to_osp (9 tests)",
-    "app-store HTTP 集成测试：upload/search/get/download (9 tests)",
-    "Ed25519 端到端签名测试：sign/upload/verify/tamper (7 tests)",
-    "修复 URL 注入：osctl cmd_install/cmd_list 和 os-agent handle_install_app 使用 .query()",
-    "AI decision loop 集成测试：wiremock mock LLM + extract_json 单元测试 (18 tests)",
-    "eBPF 构建系统：libbpf-cargo feature flag + build.rs",
-    "CgroupMonitor 单元测试：fake cgroup filesystem (17 tests)",
-    "消除 resource-scheduler 生产代码 unwrap/expect",
-    "稳定性测试框架：720 tick 压力测试 (3 ignored + 1 sanity)",
-    "os-syscall-bindings 单元测试：Widget/UISpec/UIDiff/Notification serde roundtrip (13 tests)",
-    "os-agent → app-store 集成测试：wiremock mock store search+download (8 tests)",
-    "os-agent 覆盖率提升：config/ai_client 单元测试 (18 tests)",
-    "修复 clippy items_after_test_module：app_generator.rs default_icon 移至 tests 前",
-    "QEMU demo 文档更新：4 语言 README 添加 virtio/端口转发/GUI 参数",
-    "覆盖率推送：manifest/signing/types/osctl 新增 14 个单元测试 (58% → 62%)"
+    "修复 store_url URL 注入/SSRF 漏洞",
+    "实现 storage_read/storage_write 真实 host function",
+    "强制 HTTPS 连接 App Store",
+    "WASM epoch interruption 防无限循环",
+    "App ID 格式验证防路径遍历",
+    "提升测试覆盖率（281→304 tests, 新增23个安全/功能测试）"
   ],
   "metrics": {
-    "test_count": 221,
+    "test_count": 304,
     "clippy_warnings": 0,
-    "test_coverage_pct": 62
+    "test_coverage_pct": 68
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

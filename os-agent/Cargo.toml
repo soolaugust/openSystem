@@ -25,12 +25,16 @@ uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 libc = "0.2"
+wasmtime = "42.0.1"
+wasmtime-wasi = "42.0.1"
+gui-renderer = { path = "../gui-renderer" }
 
 [dev-dependencies]
 wiremock = "0.6"
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
 criterion = { version = "0.5", features = ["html_reports"] }
+wat = "1.245.1"
 
 [[bench]]
 name = "intent_bench"

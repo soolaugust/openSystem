@@ -1,18 +1,24 @@
 use crate::ai_client::{AiClient, Message};
 use crate::app_generator::{generate_app_spec, AppGenerator};
 use crate::intent::{classify, IntentKind};
+use crate::wasm_runtime::WasmRuntime;
 use anyhow::Result;
 use rustyline::DefaultEditor;
 
 /// Natural-language terminal that classifies user input into intents and dispatches actions.
 pub struct NlTerminal {
     client: AiClient,
+    runtime: WasmRuntime,
 }
 
 impl NlTerminal {
     /// Create a new terminal backed by the given AI client.
     pub fn new(client: AiClient) -> Self {
-        Self { client }
+        let runtime = WasmRuntime::new().unwrap_or_else(|e| {
+            tracing::warn!("WasmRuntime init failed: {} — RunApp will be unavailable", e);
+            WasmRuntime::default()
+        });
+        Self { client, runtime }
     }
 
     /// Start the REPL loop, reading user input and dispatching classified intents.
@@ -137,6 +143,13 @@ impl NlTerminal {
                 println!("  ✓ App installed!");
                 println!("    UUID: {}", app.app_uuid);
                 println!("    Package: {}", app.osp_path.display());
+                if let Some(ref uidl) = app.uidl_json {
+                    println!("    GUI layout: {} chars of UIDL", uidl.len());
+                    // Render a preview frame to confirm the GUI pipeline works end-to-end.
+                    self.render_uidl_preview(uidl);
+                } else {
+                    println!("    GUI layout: none (text-only app)");
+                }
             }
             Err(e) => {
                 eprintln!("  ✗ App generation failed: {}", e);
@@ -197,11 +210,9 @@ impl NlTerminal {
                 Err(_) => continue,
             };
             let name = manifest["name"].as_str().unwrap_or("");
-            // Match by name (case-insensitive substring)
-            if !app_name.is_empty() && name.to_lowercase().contains(&app_name.to_lowercase()) {
-                matched.push((path, manifest));
-            } else if app_name.is_empty() {
-                // If no name specified, show all
+            if app_name.is_empty()
+                || name.to_lowercase().contains(&app_name.to_lowercase())
+            {
                 matched.push((path, manifest));
             }
         }
@@ -218,23 +229,7 @@ impl NlTerminal {
             return;
         }
 
-        if matched.len() == 1 {
-            let (path, manifest) = &matched[0];
-            let uuid = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown");
-            let name = manifest["name"].as_str().unwrap_or("unknown");
-            let desc = manifest["description"].as_str().unwrap_or("");
-            let version = manifest["version"].as_str().unwrap_or("?");
-            println!("  → Found app: {} (v{})", name, version);
-            println!("    UUID: {}", uuid);
-            println!("    Path: {}", path.display());
-            if !desc.is_empty() {
-                println!("    Description: {}", desc);
-            }
-            println!("    (WASM runtime execution is not yet available in this MVP)");
-        } else {
+        if matched.len() > 1 {
             println!("  → Found {} matching apps:", matched.len());
             for (path, manifest) in &matched {
                 let uuid = path
@@ -245,7 +240,46 @@ impl NlTerminal {
                 let version = manifest["version"].as_str().unwrap_or("?");
                 println!("    - {} (v{}) [{}]", name, version, uuid);
             }
-            println!("    (WASM runtime execution is not yet available in this MVP)");
+            println!("  → Please be more specific.");
+            return;
+        }
+
+        let (path, manifest) = &matched[0];
+        let name = manifest["name"].as_str().unwrap_or("unknown");
+        let version = manifest["version"].as_str().unwrap_or("?");
+        let wasm_path = path.join("app.wasm");
+
+        println!("  → Running: {} (v{})", name, version);
+
+        if !wasm_path.exists() {
+            eprintln!(
+                "  ✗ app.wasm not found at {}. App may be corrupted.",
+                wasm_path.display()
+            );
+            return;
+        }
+
+        println!("  → Executing WASM sandbox...");
+        match self.runtime.execute(&wasm_path) {
+            Ok(output) => {
+                if output.stdout.is_empty() && output.stderr.is_empty() {
+                    println!("  ✓ App exited successfully (no output).");
+                } else {
+                    println!("  ✓ App output:");
+                    for line in &output.stdout {
+                        println!("    {}", line);
+                    }
+                    if !output.stderr.is_empty() {
+                        println!("  [stderr]:");
+                        for line in &output.stderr {
+                            eprintln!("    {}", line);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("  ✗ WASM execution failed: {}", e);
+            }
         }
     }
 
@@ -369,6 +403,32 @@ impl NlTerminal {
             }
             Err(e) => {
                 eprintln!("  → Failed to extract .osp: {}", e);
+            }
+        }
+    }
+
+    /// Render one frame of the UIDL layout using the software renderer and report result.
+    ///
+    /// Uses a fixed 800×600 canvas. On success prints pixel count; on failure warns.
+    fn render_uidl_preview(&self, uidl_json: &str) {
+        match gui_renderer::UidlDocument::parse(uidl_json) {
+            Ok(doc) => {
+                match gui_renderer::render_to_rgba(&doc, 800, 600) {
+                    Ok(pixels) => {
+                        println!(
+                            "    GUI preview: rendered {}×{} → {} RGBA bytes ✓",
+                            800,
+                            600,
+                            pixels.len()
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!("GUI preview render failed: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!("UIDL parse failed (will still run as text app): {}", e);
             }
         }
     }

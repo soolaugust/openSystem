@@ -5,3 +5,4 @@ pub mod intent;
 pub mod nl_terminal;
 pub mod setup_wizard;
 pub mod utils;
+pub mod wasm_runtime;

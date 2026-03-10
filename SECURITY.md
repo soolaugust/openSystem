@@ -72,3 +72,41 @@ The app store (`POST /api/apps/upload`) supports optional API key authentication
 - Authentication is a simple bearer token comparison; there is no per-user access control or key rotation mechanism.
 - No rate limiting is implemented. A public-facing store should be placed behind a reverse proxy (e.g. nginx) with connection-rate and request-rate limiting.
 - HTTPS is not enforced by the server itself; terminate TLS at the reverse proxy layer.
+
+---
+
+## v2.0 Security Audit (Round 12)
+
+### WASM Runtime (WasmRuntime — wasmtime 42)
+
+| Risk | Severity | Status |
+|------|----------|--------|
+| Sandbox escape (wasmtime CVE) | Medium | Monitor RUSTSEC; pin wasmtime version |
+| Infinite loop / CPU spin | Medium | **Deferred v2.1** — add epoch-interrupt budget |
+| stdout/stderr flooding | Low | Mitigated: `MemoryOutputPipe` capped at 64 MiB |
+| Host function abuse (`__opensystem_*`) | Low | All stubs in v2.0 — no real I/O exposed |
+| Filesystem access from WASM | N/A | No `preopened_dirs` granted; WASI stdio only |
+
+### AppGenerator (LLM → cargo → tar → /apps)
+
+| Risk | Severity | Status |
+|------|----------|--------|
+| LLM generates `unsafe` Rust | Low | Prompt prohibits it; compiler enforces |
+| Build path traversal | Low | Mitigated: UUID-namespaced temp dirs |
+| zip-slip on `.osp` extraction | High | Mitigated: `tar --strip-components=1 -C <dir>` |
+| UIDL injection (malicious widget tree) | Low | UIDL is parsed by serde; unknown keys ignored |
+
+### App Store HTTP Client
+
+| Risk | Severity | Status |
+|------|----------|--------|
+| MITM on `.osp` download | Medium | **Deferred v2.1** — enforce HTTPS store URL |
+| Malicious `id` field used as fs path | Low | **Deferred v2.1** — add `[a-zA-Z0-9_-]+` validation |
+
+### Deferred to v2.1
+
+1. `Engine` epoch interruption — cap WASM execution wall time.
+2. HTTPS enforcement for `OPENSYSTEM_STORE_URL`.
+3. App ID regex validation before use as filesystem path component.
+4. `__opensystem_net_http_get` real impl must go through a host-side URL allowlist.
+5. `.osp` package code signing and store-side verification.

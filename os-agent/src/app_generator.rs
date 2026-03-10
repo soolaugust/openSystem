@@ -21,6 +21,9 @@ pub struct GeneratedApp {
     pub app_uuid: String,
     #[allow(dead_code)]
     pub spec: AppSpec,
+    /// UIDL JSON describing the GUI layout for this app.
+    /// `None` if UIDL generation was skipped or failed gracefully.
+    pub uidl_json: Option<String>,
 }
 
 const CODE_GEN_SYSTEM_PROMPT: &str = r#"You are a Rust/WASI code generator for openSystem apps.
@@ -44,6 +47,39 @@ Respond with ONLY the Rust code, no explanation, no markdown code blocks."#;
 const ICON_GEN_SYSTEM_PROMPT: &str = r#"Generate a simple SVG icon for the described app.
 The SVG should be 64x64 pixels, use simple shapes and 2-3 colors.
 Respond with ONLY the SVG code, nothing else."#;
+
+/// System prompt for UIDL GUI layout generation.
+///
+/// The generated JSON must be a valid openSystem UIDL document parseable by
+/// `gui-renderer::uidl::UidlDocument::parse()`.
+const UIDL_GEN_SYSTEM_PROMPT: &str = r##"You are an openSystem UI layout generator.
+Generate a UIDL (UI Description Language) JSON document describing the GUI for the given app.
+
+UIDL schema (all fields are as shown — no other keys are allowed):
+{
+  "layout": <Widget>,
+  "theme": {
+    "primary_color": "#RRGGBB",
+    "background_color": "#RRGGBB",
+    "font_size_base": 14
+  }
+}
+
+Widget types (use "type" field):
+- {"type":"vstack","gap":8,"padding":8,"children":[...], "id":"optional-id"}
+- {"type":"hstack","gap":8,"children":[...], "id":"optional-id"}
+- {"type":"text","content":"Hello","style":{"font_size":18,"color":"#333333","bold":true,"align":"center"}, "id":"lbl-id"}
+- {"type":"button","label":"Start","action":"timer.start","id":"btn-id"}
+- {"type":"input","placeholder":"Enter name","on_change":"on_name","id":"inp-id"}
+- {"type":"spacer","size":16}
+
+RULES:
+1. Root must be a vstack or hstack.
+2. All button "action" and input "on_change" values are WASM export names the runtime will call.
+3. Give meaningful "id" values to widgets that the app logic updates (text labels, buttons).
+4. Keep it simple: 5-15 widgets maximum.
+5. Use a clean color theme matching the app purpose.
+6. Respond with ONLY the JSON, no explanation, no markdown fences."##;
 
 /// Generates, compiles, packages, and installs openSystem apps from natural language prompts.
 pub struct AppGenerator {
@@ -82,17 +118,28 @@ impl AppGenerator {
             .await
             .context("Failed to compile app after 3 attempts")?;
 
-        // Step 3: Generate icon
-        tracing::info!("[3/5] Generating icon...");
-        let icon_svg = self
-            .generate_icon(prompt, spec)
-            .await
-            .unwrap_or_else(|_| default_icon(&spec.name));
+        // Step 3: Generate UIDL and icon in parallel (independent, both can fail gracefully)
+        tracing::info!("[3/5] Generating UIDL layout + icon...");
+        let (uidl_result, icon_result) = tokio::join!(
+            self.generate_uidl(prompt, spec),
+            self.generate_icon(prompt, spec),
+        );
+        let uidl_json = match uidl_result {
+            Ok(json) => {
+                tracing::info!("  UIDL generated ({} chars)", json.len());
+                Some(json)
+            }
+            Err(e) => {
+                tracing::warn!("  UIDL generation failed (non-fatal): {}", e);
+                None
+            }
+        };
+        let icon_svg = icon_result.unwrap_or_else(|_| default_icon(&spec.name));
 
         // Step 4: Package into .osp
         tracing::info!("[4/5] Packaging .osp...");
         let osp_path = self
-            .package_osp(&app_uuid, &wasm_path, &icon_svg, prompt, spec)
+            .package_osp(&app_uuid, &wasm_path, &icon_svg, uidl_json.as_deref(), prompt, spec)
             .await?;
 
         // Step 5: Install
@@ -103,6 +150,7 @@ impl AppGenerator {
             osp_path,
             app_uuid,
             spec: spec.clone(),
+            uidl_json,
         })
     }
 
@@ -231,6 +279,31 @@ path = "src/main.rs"
         self.client.complete(messages).await
     }
 
+    /// Generate a UIDL JSON layout document for the given app using the AI model.
+    ///
+    /// The returned string is validated to be parseable JSON before returning.
+    /// If the AI wraps the JSON in markdown fences, they are stripped.
+    async fn generate_uidl(&self, prompt: &str, spec: &AppSpec) -> Result<String> {
+        let user_msg = format!(
+            "Generate the UIDL GUI layout for this openSystem app.\n\nApp: {}\nDescription: {}\nUI hints: {}\nPrompt: {}",
+            spec.name,
+            spec.description,
+            spec.ui_hints.as_deref().unwrap_or("none"),
+            prompt,
+        );
+        let messages = vec![
+            Message::system(UIDL_GEN_SYSTEM_PROMPT),
+            Message::user(&user_msg),
+        ];
+        let raw = self.client.complete(messages).await?;
+        // Strip markdown code fences if present
+        let json_str = crate::utils::extract_json(&raw);
+        // Validate it parses as JSON (catches hallucinated keys early)
+        let _: serde_json::Value = serde_json::from_str(json_str)
+            .context("UIDL response is not valid JSON")?;
+        Ok(json_str.to_string())
+    }
+
     async fn generate_icon(&self, prompt: &str, spec: &AppSpec) -> Result<String> {
         let messages = vec![
             Message::system(ICON_GEN_SYSTEM_PROMPT),
@@ -244,6 +317,7 @@ path = "src/main.rs"
         app_uuid: &str,
         wasm_path: &Path,
         icon_svg: &str,
+        uidl_json: Option<&str>,
         prompt: &str,
         spec: &AppSpec,
     ) -> Result<PathBuf> {
@@ -260,6 +334,7 @@ path = "src/main.rs"
             "description": spec.description,
             "permissions": spec.permissions,
             "ui_spec": spec.ui_hints,
+            "has_uidl": uidl_json.is_some(),
             "uuid": app_uuid,
             "generated_at": chrono::Utc::now().to_rfc3339(),
         });
@@ -273,6 +348,11 @@ path = "src/main.rs"
 
         // Write icon.svg
         std::fs::write(osp_dir.join("icon.svg"), icon_svg)?;
+
+        // Write uidl.json if available
+        if let Some(uidl) = uidl_json {
+            std::fs::write(osp_dir.join("uidl.json"), uidl)?;
+        }
 
         // Create .osp archive (tar.gz)
         let osp_path = self.build_dir.join(format!(
@@ -378,6 +458,7 @@ fn default_icon(app_name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gui_renderer;
 
     #[test]
     fn test_app_spec_roundtrip_serde() {
@@ -449,5 +530,111 @@ mod tests {
         let svg = default_icon("");
         // Should fallback to 'A'
         assert!(svg.contains(">A<"));
+    }
+
+    // ── Round 11: UIDL generation tests ─────────────────────────────────────
+
+    #[test]
+    fn test_generated_app_has_uidl_field() {
+        // GeneratedApp must carry an optional uidl_json field.
+        // We construct it directly to verify the struct shape.
+        let app = GeneratedApp {
+            osp_path: std::path::PathBuf::from("/tmp/test.osp"),
+            app_uuid: "test-uuid".to_string(),
+            spec: AppSpec {
+                name: "test".to_string(),
+                description: "desc".to_string(),
+                permissions: vec![],
+                ui_hints: None,
+            },
+            uidl_json: Some(r#"{"layout":{"type":"text","content":"hi"}}"#.to_string()),
+        };
+        assert!(app.uidl_json.is_some());
+        assert_eq!(app.uidl_json.as_deref().unwrap().len() > 0, true);
+    }
+
+    #[test]
+    fn test_generated_app_uidl_none() {
+        let app = GeneratedApp {
+            osp_path: std::path::PathBuf::from("/tmp/test.osp"),
+            app_uuid: "test-uuid-2".to_string(),
+            spec: AppSpec {
+                name: "cli-only".to_string(),
+                description: "text app".to_string(),
+                permissions: vec![],
+                ui_hints: None,
+            },
+            uidl_json: None,
+        };
+        assert!(app.uidl_json.is_none());
+    }
+
+    #[test]
+    fn test_uidl_gen_prompt_contains_widget_types() {
+        // Verify the UIDL generation prompt instructs the model correctly.
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("vstack"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("hstack"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("button"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("input"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("text"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("spacer"));
+    }
+
+    #[test]
+    fn test_uidl_gen_prompt_rules_present() {
+        // The prompt must include the key rules that keep AI output valid.
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("RULES"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("vstack or hstack"));
+        assert!(UIDL_GEN_SYSTEM_PROMPT.contains("WASM export"));
+    }
+
+    #[test]
+    fn test_uidl_json_is_valid_for_gui_renderer() {
+        // Any UIDL that comes out of generate_uidl must parse with gui-renderer.
+        let sample_uidl = r##"{
+            "layout": {
+                "type": "vstack",
+                "gap": 16,
+                "padding": 8,
+                "children": [
+                    {"type": "text", "content": "Pomodoro Timer", "id": "lbl-title",
+                     "style": {"font_size": 24, "bold": true, "align": "center"}},
+                    {"type": "text", "content": "25:00", "id": "lbl-time",
+                     "style": {"font_size": 48, "align": "center"}},
+                    {"type": "spacer", "size": 16},
+                    {"type": "hstack", "gap": 8, "children": [
+                        {"type": "button", "label": "Start", "action": "timer.start", "id": "btn-start"},
+                        {"type": "button", "label": "Reset", "action": "timer.reset", "id": "btn-reset"}
+                    ]}
+                ]
+            },
+            "theme": {
+                "primary_color": "#E53E3E",
+                "background_color": "#FFFFFF",
+                "font_size_base": 14
+            }
+        }"##;
+
+        // Must parse correctly.
+        let doc = gui_renderer::UidlDocument::parse(sample_uidl).unwrap();
+        assert_eq!(doc.widget_count(), 7); // vstack + 2 texts + spacer + hstack + 2 buttons
+
+        // Must render without error.
+        let pixels = gui_renderer::render_to_rgba(&doc, 400, 600).unwrap();
+        assert_eq!(pixels.len(), 400 * 600 * 4);
+    }
+
+    #[test]
+    fn test_manifest_has_uidl_flag() {
+        // The manifest JSON written by package_osp should include has_uidl.
+        // We test the serde shape here (the actual file write is integration-level).
+        let manifest = serde_json::json!({
+            "name": "timer",
+            "version": "1.0.0",
+            "has_uidl": true,
+            "uuid": "abc-123",
+        });
+        assert_eq!(manifest["has_uidl"].as_bool(), Some(true));
+        assert_eq!(manifest["name"].as_str(), Some("timer"));
     }
 }

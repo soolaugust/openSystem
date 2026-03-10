@@ -92,19 +92,15 @@ impl SoftwareRenderer {
         Ok(Self { width, height })
     }
 
-    /// Render UIDL to raw RGBA pixel buffer
+    /// Render UIDL to raw RGBA pixel buffer using tiny-skia software rasterizer.
     pub fn render_to_buffer(&self, doc: &UidlDocument) -> Result<Vec<u8>> {
-        // TODO: Walk UidlDocument tree and paint using tiny-skia primitives:
-        //   draw_widget(pixmap, &doc.layout, 0, 0, self.width, self.height)
-        let pixel_count = (self.width * self.height) as usize;
-        let buffer = vec![0u8; pixel_count * 4]; // RGBA black
         tracing::info!(
-            "SoftwareRenderer::render_to_buffer — {}x{}, {} widgets (stub)",
+            "SoftwareRenderer::render_to_buffer — {}x{}, {} widgets",
             self.width,
             self.height,
             doc.widget_count()
         );
-        Ok(buffer)
+        crate::widget_system::render_to_rgba(doc, self.width, self.height)
     }
 }
 

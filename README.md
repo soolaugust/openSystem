@@ -5,7 +5,7 @@
 > ⚠️ **Experimental.** This project is in early-stage research. It is not ready for production use.
 > APIs, config formats, and architecture will change without notice. Contributions and wild ideas welcome.
 
-**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem)
+**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem) · **v0.2.0-alpha** · 281 tests, 0 failures
 
 English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -27,6 +27,68 @@ not one that bolts AI on top of 50 years of POSIX legacy.
 - The 1970s shell metaphor has overstayed its welcome
 - AI inference is cheap enough to be in the syscall path
 - The best OS you'll ever use hasn't been built yet
+
+## What Works Today (v0.2.0-alpha)
+
+> Say a sentence. Get a running app — in under 30 seconds.
+
+```
+opensystem> create a pomodoro timer
+  Classifying intent... CreateApp
+  → Generating AppSpec from prompt...
+  → App: "Pomodoro Timer" — 25-minute focus timer with start/stop controls
+  → Generating Rust/Wasm code (this may take ~30s)...
+  ✓ App installed!
+    UUID: 3f8a1c2d-...
+    Package: /apps/3f8a1c2d-.../app.osp
+    GUI layout: 847 chars of UIDL
+    GUI preview: rendered 800×600 → 1920000 RGBA bytes ✓
+
+opensystem> run pomodoro
+  → Running: Pomodoro Timer (v0.1.0)
+  → Executing WASM sandbox...
+  ✓ App output:
+    Pomodoro Timer started. Focus for 25 minutes.
+```
+
+### Capabilities
+
+| Capability | Status | Implementation |
+|-----------|--------|----------------|
+| Natural language → app creation | ✅ Working | `os-agent` intent pipeline + LLM codegen |
+| WASM sandbox execution | ✅ Working | wasmtime 42 / WASIp1 with `MemoryOutputPipe` |
+| App Store install/search | ✅ Working | SQLite registry + Ed25519 signed `.osp` packages |
+| Software GUI rendering | ✅ Working | tiny-skia 0.12 + fontdue 0.9 pixel rasterizer |
+| UIDL → ECS component tree | ✅ Working | `build_ecs_tree()` with hit-test and layout engine |
+| UI event → WASM callbacks | ✅ Working | `EventBridge` bidirectional channel |
+| AI-generated GUI layouts | ✅ Working | `UIDL_GEN_SYSTEM_PROMPT` few-shot schema |
+| AI-driven resource scheduling | ✅ Working | eBPF probes + cgroup v2 + LLM decision loop |
+| GPU-accelerated rendering | 🔜 v2.1 | Bevy + wgpu (ECS tree ready to connect) |
+| WASM epoch interruption | 🔜 v2.1 | CPU time budget enforcement |
+
+### App Lifecycle
+
+```
+User intent
+    ↓
+os-agent classifies → CreateApp
+    ↓
+LLM generates in parallel:
+  ┌─────────────────┐    ┌──────────────────────────┐
+  │  Rust/WASM code │    │  UIDL JSON (widget tree)  │
+  │  cargo check    │    │  validated + packed into  │
+  │  → app.wasm     │    │  → uidl.json in .osp      │
+  └────────┬────────┘    └────────────┬─────────────┘
+           └────────────┬─────────────┘
+                        ↓
+              .osp package → /apps/<uuid>/
+                        ↓
+        ┌───────────────┴───────────────┐
+        │  wasmtime sandbox             │  ←── RunApp intent
+        │  app.wasm executes            │
+        │  stdout captured              │
+        └───────────────────────────────┘
+```
 
 ## Architecture
 
@@ -148,6 +210,17 @@ model    = "claude-sonnet-4-6"
 
 **On POSIX:**
 > In openSystem, software is generated on-demand. POSIX compatibility here is like insisting a streaming service support VHS.
+
+## Component Overview
+
+| Crate | Description | Tests |
+|-------|-------------|-------|
+| `os-agent` | Core daemon: NL terminal, intent classification, app generation, WASM runner | 59 |
+| `gui-renderer` | UIDL layout engine, software rasterizer, ECS tree, event bridge | 64 |
+| `app-store` | Ed25519-signed `.osp` registry, HTTP API, `osctl` CLI | — |
+| `resource-scheduler` | AI-driven cgroup v2 management, eBPF CPU/IO probes | — |
+| `rom-builder` | Hardware manifest resolver, QEMU board support, disk image packaging | — |
+| `os-syscall-bindings` | WASI syscall API, memory-safe IPC, timer management | 58 |
 
 ## License
 

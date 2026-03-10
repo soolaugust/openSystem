@@ -724,6 +724,101 @@ mod tests {
         assert!(parsed.title.is_empty());
         assert!(parsed.body.is_empty());
     }
+
+    // ── Text style defaults ─────────────────────────────────────────────
+
+    #[test]
+    fn test_text_style_default_all_none() {
+        let style = TextStyle::default();
+        assert!(style.font_size.is_none());
+        assert!(style.color.is_none());
+        assert!(style.bold.is_none());
+    }
+
+    #[test]
+    fn test_text_style_roundtrip_json() {
+        let style = TextStyle {
+            font_size: Some(16),
+            color: Some("#ff0000".into()),
+            bold: Some(true),
+        };
+        let json = serde_json::to_string(&style).unwrap();
+        let parsed: TextStyle = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.font_size, Some(16));
+        assert_eq!(parsed.color.as_deref(), Some("#ff0000"));
+        assert_eq!(parsed.bold, Some(true));
+    }
+
+    #[test]
+    fn test_uidiff_empty_updates() {
+        let diff = UIDiff { updates: vec![] };
+        let json = serde_json::to_string(&diff).unwrap();
+        let parsed: UIDiff = serde_json::from_str(&json).unwrap();
+        assert!(parsed.updates.is_empty());
+    }
+
+    #[test]
+    fn test_uidiff_multiple_updates_roundtrip() {
+        let diff = UIDiff {
+            updates: vec![
+                ("w1".into(), Widget::Text { content: "A".into(), style: None }),
+                ("w2".into(), Widget::Button { label: "B".into(), action: "act".into() }),
+            ],
+        };
+        let json = serde_json::to_string(&diff).unwrap();
+        let parsed: UIDiff = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.updates.len(), 2);
+        assert_eq!(parsed.updates[0].0, "w1");
+        assert_eq!(parsed.updates[1].0, "w2");
+    }
+
+    #[test]
+    fn test_storage_read_returns_none_on_native() {
+        // On native, stub returns null → None
+        let result = super::storage::read("any-key");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_storage_write_returns_error_on_native() {
+        // On native, stub returns 0 → Err
+        let result = super::storage::write("key", b"value");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("write failed"));
+    }
+
+    #[test]
+    fn test_timer_set_interval_returns_slot_index_on_native() {
+        // On native, returns callback slot index (0, 1, ...)
+        let id1 = super::timer::set_interval(1000, || {});
+        let id2 = super::timer::set_interval(2000, || {});
+        assert_ne!(id1, id2, "two timers should get different slot indices");
+        super::timer::clear(id1);
+        super::timer::clear(id2);
+    }
+
+    #[test]
+    fn test_timer_clear_reuses_slot() {
+        let id1 = super::timer::set_interval(100, || {});
+        super::timer::clear(id1);
+        // After clear, the slot should be reusable.
+        let id2 = super::timer::set_interval(200, || {});
+        assert_eq!(id1, id2, "cleared slot should be reused");
+        super::timer::clear(id2);
+    }
+
+    #[test]
+    fn test_notify_send_does_not_panic_on_native() {
+        // On native, notify::send is a no-op; should not panic
+        super::notify::send("title", "body");
+    }
+
+    #[test]
+    fn test_render_handle_clone() {
+        let handle = RenderHandle(42);
+        let cloned = handle.clone();
+        assert_eq!(cloned.0, 42);
+    }
 }
 
 // ─── net ─────────────────────────────────────────────────────────────────────

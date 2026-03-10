@@ -1,29 +1,17 @@
 {
-  "round": 7,
+  "round": 8,
   "current_version": "v0.2.0-alpha",
   "next_target": "v0.3.0",
   "status": "coding_done",
   "last_updated": "2026-03-10",
-  "backlog": [
-    "修复 store_url URL 注入/SSRF 漏洞",
-    "实现 storage_read/storage_write 真实 host function",
-    "提升测试覆盖率至 ≥70%",
-    "强制 HTTPS 连接 App Store",
-    "WASM epoch interruption 防无限循环",
-    "App ID 格式验证防路径遍历"
-  ],
+  "backlog": [],
   "completed_this_round": [
-    "修复 store_url URL 注入/SSRF 漏洞",
-    "实现 storage_read/storage_write 真实 host function",
-    "强制 HTTPS 连接 App Store",
-    "WASM epoch interruption 防无限循环",
-    "App ID 格式验证防路径遍历",
-    "提升测试覆盖率（281→304 tests, 新增23个安全/功能测试）"
+    "提升测试覆盖率至 ≥70%（304→341 tests，+37 新增，修复1个 env race condition）"
   ],
   "metrics": {
-    "test_count": 304,
+    "test_count": 341,
     "clippy_warnings": 0,
-    "test_coverage_pct": 68
+    "test_coverage_pct": 72
   },
   "feishu_chat_id": "oc_c2d2e1e5c92727292dce1ad4eb45edcd",
   "feishu_bot": "claude-code-bot"

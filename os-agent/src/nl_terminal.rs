@@ -521,19 +521,22 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    // NOTE: Tests that mutate OPENSYSTEM_ALLOW_HTTP are combined into a single
+    // test to avoid env-var race conditions when tests run in parallel.
     #[test]
-    fn test_validate_store_url_http_blocked_by_default() {
+    fn test_validate_store_url_http_env_behavior() {
+        // Use a per-test unique env var to avoid interference with parallel tests.
+        // Since validate_store_url reads OPENSYSTEM_ALLOW_HTTP directly, we must
+        // serialize the two assertions. Running them in a single test guarantees
+        // sequential execution.
         std::env::remove_var("OPENSYSTEM_ALLOW_HTTP");
-        let result = validate_store_url("http://localhost:8080");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("HTTP is not allowed"));
-    }
+        let blocked = validate_store_url("http://localhost:8080");
+        assert!(blocked.is_err());
+        assert!(blocked.unwrap_err().to_string().contains("HTTP is not allowed"));
 
-    #[test]
-    fn test_validate_store_url_http_allowed_with_env() {
         std::env::set_var("OPENSYSTEM_ALLOW_HTTP", "1");
-        let result = validate_store_url("http://localhost:8080");
-        assert!(result.is_ok());
+        let allowed = validate_store_url("http://localhost:8080");
+        assert!(allowed.is_ok());
         std::env::remove_var("OPENSYSTEM_ALLOW_HTTP");
     }
 
@@ -587,5 +590,44 @@ mod tests {
     fn test_validate_store_url_data_scheme_rejected() {
         let result = validate_store_url("data:text/html,<script>alert(1)</script>");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_store_url_https_with_port() {
+        let result = validate_store_url("https://store.example.com:8443/api");
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert_eq!(url.port(), Some(8443));
+    }
+
+    #[test]
+    fn test_validate_store_url_https_with_path_and_query() {
+        let result = validate_store_url("https://store.example.com/api/v2?format=json");
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert_eq!(url.path(), "/api/v2");
+        assert_eq!(url.query(), Some("format=json"));
+    }
+
+    #[test]
+    fn test_validate_store_url_password_only_rejected() {
+        // URL with only password (no user) in userinfo
+        let result = validate_store_url("https://:secret@evil.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("userinfo"));
+    }
+
+    #[test]
+    fn test_validate_store_url_ssh_scheme_rejected() {
+        let result = validate_store_url("ssh://root@server.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("disallowed URL scheme"));
+    }
+
+    #[test]
+    fn test_validate_store_url_not_a_url() {
+        let result = validate_store_url("not a url at all");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not a valid URL"));
     }
 }

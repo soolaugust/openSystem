@@ -238,6 +238,45 @@ mod tests {
     }
 
     #[test]
+    fn test_decision_response_multiple_actions() {
+        let resp = DecisionResponse {
+            actions: vec![
+                ResourceAction::SetCpuWeight { app: "a".into(), weight: 100 },
+                ResourceAction::SetMemoryLimit { app: "a".into(), limit_mb: 256 },
+                ResourceAction::KillApp { app: "b".into(), reason: "oom".into() },
+            ],
+            reasoning: Some("Multi-action response".into()),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let parsed: DecisionResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.actions.len(), 3);
+    }
+
+    #[test]
+    fn test_resource_action_memory_limit_zero_means_unlimited() {
+        let action = ResourceAction::SetMemoryLimit {
+            app: "test".into(),
+            limit_mb: 0,
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        assert!(json.contains("\"limit_mb\":0"));
+        let parsed: ResourceAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, action);
+    }
+
+    #[test]
+    fn test_resource_action_io_weight_serde() {
+        let action = ResourceAction::SetIoWeight {
+            app: "io-test".into(),
+            weight: 5000,
+        };
+        let json = serde_json::to_string(&action).unwrap();
+        assert!(json.contains("\"type\":\"set_io_weight\""));
+        let parsed: ResourceAction = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, action);
+    }
+
+    #[test]
     fn test_system_snapshot_with_metrics() {
         let m = CgroupMetrics {
             app_id: "app-1".to_string(),

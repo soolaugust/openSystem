@@ -203,4 +203,37 @@ mod tests {
         });
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_validate_app_id_unicode_allowed() {
+        // is_alphanumeric() includes Unicode alphanumeric chars, so these are valid
+        assert!(validate_app_id("アプリ").is_ok());
+        assert!(validate_app_id("app名前").is_ok());
+    }
+
+    #[test]
+    fn test_validate_app_id_dot_only() {
+        // Single dot is valid (e.g., ".hidden" style)
+        assert!(validate_app_id(".").is_ok());
+        // Double dot is path traversal
+        assert!(validate_app_id("..").is_err());
+    }
+
+    #[test]
+    fn test_cgroup_executor_default() {
+        let exec = CgroupExecutor::default();
+        let path = exec.app_cgroup_path("test");
+        assert_eq!(path, PathBuf::from("/sys/fs/cgroup/opensystem.slice/test"));
+    }
+
+    #[test]
+    fn test_set_cpu_weight_bad_app_error_message() {
+        let exec = CgroupExecutor::new();
+        let result = exec.execute(&ResourceAction::SetCpuWeight {
+            app: "a/b".to_string(),
+            weight: 100,
+        });
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("invalid characters"), "got: {}", err);
+    }
 }

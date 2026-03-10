@@ -609,6 +609,121 @@ mod tests {
         let result: Result<Widget, _> = serde_json::from_str(json);
         assert!(result.is_err());
     }
+
+    // ── Deeply nested widget tree ──────────────────────────────────────
+
+    #[test]
+    fn test_deeply_nested_widget_tree() {
+        let widget = Widget::VStack {
+            gap: Some(4),
+            padding: Some(8),
+            children: vec![
+                Widget::HStack {
+                    gap: Some(2),
+                    children: vec![
+                        Widget::Text { content: "left".into(), style: None },
+                        Widget::Button { label: "Go".into(), action: "go".into() },
+                    ],
+                },
+                Widget::Input { placeholder: Some("type".into()), on_change: Some("change".into()) },
+            ],
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        match parsed {
+            Widget::VStack { children, .. } => {
+                assert_eq!(children.len(), 2);
+                match &children[0] {
+                    Widget::HStack { children: inner, .. } => assert_eq!(inner.len(), 2),
+                    _ => panic!("Expected HStack"),
+                }
+            }
+            _ => panic!("Expected VStack"),
+        }
+    }
+
+    // ── UI module (native stubs) ────────────────────────────────────────
+
+    #[test]
+    fn test_ui_render_returns_handle_on_native() {
+        let spec = UISpec {
+            layout: Widget::Text {
+                content: "test".into(),
+                style: None,
+            },
+        };
+        // On native, this calls the stub which returns RenderHandle(0)
+        let handle = super::ui::render(&spec).unwrap();
+        assert_eq!(handle.0, 0);
+    }
+
+    #[test]
+    fn test_ui_update_succeeds_on_native() {
+        let handle = RenderHandle(0);
+        let diff = UIDiff {
+            updates: vec![("w1".into(), Widget::Text {
+                content: "new".into(),
+                style: None,
+            })],
+        };
+        // Should not panic or error on native
+        let result = super::ui::update(&handle, &diff);
+        assert!(result.is_ok());
+    }
+
+    // ── Net module (native stubs) ────────────────────────────────────────
+
+    #[test]
+    fn test_net_http_get_returns_error_on_native() {
+        // On native, the stub returns null pointer → empty response error
+        let result = super::net::http_get("https://example.com");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("empty response"));
+    }
+
+    // ── SyscallError variants ────────────────────────────────────────────
+
+    #[test]
+    fn test_syscall_error_storage_display() {
+        let err = SyscallError::Storage("key not found".into());
+        assert_eq!(err.to_string(), "storage error: key not found");
+    }
+
+    #[test]
+    fn test_syscall_error_permission_denied_display() {
+        let err = SyscallError::PermissionDenied("net".into());
+        assert_eq!(err.to_string(), "permission denied: net");
+    }
+
+    // ── Empty/edge-case widget trees ─────────────────────────────────────
+
+    #[test]
+    fn test_vstack_empty_children() {
+        let widget = Widget::VStack {
+            gap: None,
+            padding: None,
+            children: vec![],
+        };
+        let json = serde_json::to_string(&widget).unwrap();
+        let parsed: Widget = serde_json::from_str(&json).unwrap();
+        match parsed {
+            Widget::VStack { children, .. } => assert!(children.is_empty()),
+            _ => panic!("Expected VStack"),
+        }
+    }
+
+    #[test]
+    fn test_notification_empty_fields() {
+        let notif = Notification {
+            title: "".into(),
+            body: "".into(),
+        };
+        let json = serde_json::to_string(&notif).unwrap();
+        let parsed: Notification = serde_json::from_str(&json).unwrap();
+        assert!(parsed.title.is_empty());
+        assert!(parsed.body.is_empty());
+    }
 }
 
 // ─── net ─────────────────────────────────────────────────────────────────────

@@ -516,4 +516,68 @@ mod tests {
         store.set_epoch_deadline(EPOCH_DEADLINE);
         // If we get here, epoch interruption is configured correctly.
     }
+
+    #[test]
+    fn test_validate_storage_key_special_chars() {
+        assert!(!validate_storage_key("key@home"));
+        assert!(!validate_storage_key("key#1"));
+        assert!(!validate_storage_key("key=value"));
+        assert!(!validate_storage_key("key\x00null"));
+        assert!(!validate_storage_key("日本語"));
+    }
+
+    #[test]
+    fn test_validate_storage_key_boundary_length() {
+        // 255 is exactly valid
+        assert!(validate_storage_key(&"x".repeat(255)));
+        // 256 is too long
+        assert!(!validate_storage_key(&"x".repeat(256)));
+        // 1 is valid
+        assert!(validate_storage_key("a"));
+    }
+
+    #[test]
+    fn test_validate_storage_key_dot_variants() {
+        assert!(validate_storage_key("config.toml"));
+        assert!(validate_storage_key(".hidden"));
+        assert!(!validate_storage_key(".."));
+        assert!(!validate_storage_key("path/../escape"));
+    }
+
+    #[test]
+    fn test_bytes_to_lines_crlf() {
+        // Rust's `lines()` splits on both \n and \r\n, stripping the line ending
+        let lines = bytes_to_lines(b"line1\r\nline2\r\n");
+        assert_eq!(lines, vec!["line1", "line2"]);
+    }
+
+    #[test]
+    fn test_bytes_to_lines_single_line_no_newline() {
+        let lines = bytes_to_lines(b"single");
+        assert_eq!(lines, vec!["single"]);
+    }
+
+    #[test]
+    fn test_bytes_to_lines_invalid_utf8() {
+        // Invalid UTF-8 should not panic (from_utf8_lossy handles it)
+        let lines = bytes_to_lines(&[0xFF, 0xFE, b'\n', b'o', b'k']);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[1], "ok");
+    }
+
+    #[test]
+    fn test_wasm_output_default() {
+        let out = WasmOutput::default();
+        assert!(out.stdout.is_empty());
+        assert!(out.stderr.is_empty());
+    }
+
+    #[test]
+    fn test_storage_dir_for_app_default_fallback() {
+        // When OPENSYSTEM_STORAGE_DIR is not set, uses HOME-based path
+        std::env::remove_var("OPENSYSTEM_STORAGE_DIR");
+        let dir = storage_dir_for_app("test-app");
+        let dir_str = dir.to_string_lossy();
+        assert!(dir_str.ends_with("/storage/test-app"), "got: {}", dir_str);
+    }
 }

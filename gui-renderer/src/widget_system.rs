@@ -523,6 +523,105 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_color_hex_with_alpha() {
+        let c = parse_color("#FF000080");
+        assert!(c.is_some());
+        let c = c.unwrap();
+        assert_eq!((c.alpha() * 255.0) as u8, 128);
+    }
+
+    #[test]
+    fn test_parse_color_invalid_hex() {
+        assert!(parse_color("#ZZZZZZ").is_none());
+        assert!(parse_color("#12345").is_none()); // 5 chars
+        assert!(parse_color("").is_none());
+        assert!(parse_color("#1").is_none());
+    }
+
+    #[test]
+    fn test_named_color_case_insensitive() {
+        assert!(named_color("RED").is_some());
+        assert!(named_color("Blue").is_some());
+        assert!(named_color("GREY").is_some());
+    }
+
+    #[test]
+    fn test_named_color_unknown() {
+        assert!(named_color("turquoise").is_none());
+        assert!(named_color("").is_none());
+        assert!(named_color("123").is_none());
+    }
+
+    #[test]
+    fn test_resolve_color_prefers_hex_over_named() {
+        // "#FF0000" is valid hex for red
+        let c = resolve_color("#FF0000");
+        assert_eq!((c.red() * 255.0) as u8, 255);
+    }
+
+    #[test]
+    fn test_layout_engine_hstack_children() {
+        let doc = simple_doc(r#"{
+            "layout": {
+                "type":"hstack","gap":4,
+                "children":[
+                    {"type":"text","content":"left"},
+                    {"type":"text","content":"right"}
+                ]
+            }
+        }"#);
+        let engine = LayoutEngine::new(320, 240);
+        let pairs = engine.layout_document(&doc);
+        // hstack + 2 children = 3 entries
+        assert_eq!(pairs.len(), 3);
+    }
+
+    #[test]
+    fn test_layout_engine_hstack_empty() {
+        let doc = simple_doc(r#"{
+            "layout": {"type":"hstack","children":[]}
+        }"#);
+        let engine = LayoutEngine::new(320, 240);
+        let pairs = engine.layout_document(&doc);
+        // just the hstack container itself
+        assert_eq!(pairs.len(), 1);
+    }
+
+    #[test]
+    fn test_widget_natural_height_spacer() {
+        let engine = LayoutEngine::new(320, 240);
+        let doc = simple_doc(r#"{
+            "layout": {
+                "type":"vstack","padding":0,"gap":0,
+                "children":[
+                    {"type":"spacer","size":20},
+                    {"type":"text","content":"x"}
+                ]
+            }
+        }"#);
+        let pairs = engine.layout_document(&doc);
+        // vstack + spacer + text = 3
+        assert_eq!(pairs.len(), 3);
+    }
+
+    #[test]
+    fn test_render_to_rgba_button_with_style() {
+        let json = r#"{"layout":{"type":"button","label":"Click","action":"click","style":{"background_color":"blue","text_color":"white"}}}"#;
+        let doc = simple_doc(json);
+        let result = render_to_rgba(&doc, 200, 50);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_render_to_rgba_input_with_placeholder() {
+        let doc = simple_doc(r#"{
+            "layout": {"type":"input","placeholder":"Enter name"}
+        }"#);
+        let result = render_to_rgba(&doc, 200, 50);
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn test_render_full_vstack() {
         let doc = simple_doc(r#"{
             "layout": {

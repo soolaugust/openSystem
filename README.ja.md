@@ -5,7 +5,11 @@
 > ⚠️ **実験的プロジェクト。** 本プロジェクトは初期研究段階にあり、本番環境での使用は推奨されません。
 > API、設定形式、アーキテクチャは予告なく変更される場合があります。コントリビューションや大胆なアイデアを歓迎します。
 
-**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem) · **v0.2.0-alpha** · テスト281件、失敗0件
+[![ビルド](https://img.shields.io/github/actions/workflow/status/soolaugust/openSystem/ci.yml?branch=master&style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![バージョン](https://img.shields.io/badge/version-v0.5.0-blue?style=flat-square)](https://github.com/soolaugust/openSystem/releases)
+[![テスト](https://img.shields.io/badge/tests-392%20passing-brightgreen?style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![カバレッジ](https://img.shields.io/badge/coverage-80%25-green?style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![ライセンス](https://img.shields.io/badge/license-MIT-orange?style=flat-square)](LICENSE)
 
 [English](README.md) | [简体中文](README.zh-CN.md) | 日本語 | [한국어](README.ko.md)
 

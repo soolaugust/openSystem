@@ -5,7 +5,11 @@
 > ⚠️ **实验性项目。** 本项目处于早期研究阶段，不适合生产使用。
 > API、配置格式和架构可能随时变更，欢迎贡献代码和各种大胆想法。
 
-**GitHub:** [soolaugust/openSystem](https://github.com/soolaugust/openSystem) · **v0.2.0-alpha** · 281 个测试，0 个失败
+[![构建状态](https://img.shields.io/github/actions/workflow/status/soolaugust/openSystem/ci.yml?branch=master&style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![版本](https://img.shields.io/badge/版本-v0.5.0-blue?style=flat-square)](https://github.com/soolaugust/openSystem/releases)
+[![测试](https://img.shields.io/badge/测试-392%20通过-brightgreen?style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![覆盖率](https://img.shields.io/badge/覆盖率-80%25-green?style=flat-square)](https://github.com/soolaugust/openSystem/actions)
+[![许可证](https://img.shields.io/badge/许可证-MIT-orange?style=flat-square)](LICENSE)
 
 [English](README.md) | 简体中文 | [日本語](README.ja.md) | [한국어](README.ko.md)
 
@@ -27,7 +31,7 @@ openSystem 不是 Linux 发行版，也不是研究原型。
 - AI 推理已经足够便宜，可以进入系统调用路径
 - 你用过的最好的操作系统还没有被构建出来
 
-## 当前可用功能（v0.2.0-alpha）
+## 当前可用功能（v0.5.0）
 
 > 说一句话，得到一个运行中的应用——30 秒内。
 

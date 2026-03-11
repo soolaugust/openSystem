@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 520" width="860" height="520">
+  <defs>
+    <style>
+      .term-bg { fill: #0d1117; rx: 8; }
+      .titlebar { fill: #161b22; }
+      .dot-r { fill: #ff5f57; }
+      .dot-y { fill: #febc2e; }
+      .dot-g { fill: #28c840; }
+      .prompt { fill: #7ee787; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .cmd { fill: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .info { fill: #8b949e; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .success { fill: #3fb950; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .arrow { fill: #58a6ff; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .value { fill: #ffa657; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; }
+      .cursor { fill: #e6edf3; }
+      .title { fill: #8b949e; font-family: -apple-system, sans-serif; font-size: 12px; }
+    </style>
+    <!-- Fade-in animations for each line -->
+    <style>
+      .line1 { opacity: 0; animation: fadein 0.3s 0.2s forwards; }
+      .line2 { opacity: 0; animation: fadein 0.3s 0.8s forwards; }
+      .line3 { opacity: 0; animation: fadein 0.3s 1.2s forwards; }
+      .line4 { opacity: 0; animation: fadein 0.3s 1.6s forwards; }
+      .line5 { opacity: 0; animation: fadein 0.3s 2.0s forwards; }
+      .line6 { opacity: 0; animation: fadein 0.3s 2.4s forwards; }
+      .line7 { opacity: 0; animation: fadein 0.3s 2.8s forwards; }
+      .line8 { opacity: 0; animation: fadein 0.3s 3.2s forwards; }
+      .line9 { opacity: 0; animation: fadein 0.3s 3.6s forwards; }
+      .line10 { opacity: 0; animation: fadein 0.3s 4.2s forwards; }
+      .line11 { opacity: 0; animation: fadein 0.3s 4.6s forwards; }
+      .line12 { opacity: 0; animation: fadein 0.3s 5.0s forwards; }
+      .line13 { opacity: 0; animation: fadein 0.3s 5.4s forwards; }
+      .line14 { opacity: 0; animation: fadein 0.3s 5.8s forwards; }
+      .line15 { opacity: 0; animation: fadein 0.3s 6.2s forwards; }
+      .line16 { opacity: 0; animation: fadein 0.3s 6.6s forwards; }
+      .line17 { opacity: 0; animation: fadein 0.3s 7.0s forwards; }
+      .line18 { opacity: 0; animation: fadein 0.3s 7.4s forwards; }
+      .cursor-blink { animation: blink 1s step-end infinite; }
+      @keyframes fadein { to { opacity: 1; } }
+      @keyframes blink { 50% { opacity: 0; } }
+    </style>
+  </defs>
+
+  <!-- Terminal window -->
+  <rect width="860" height="520" rx="10" class="term-bg"/>
+
+  <!-- Title bar -->
+  <rect width="860" height="36" rx="10" class="titlebar"/>
+  <rect y="26" width="860" height="10" class="titlebar"/>
+
+  <!-- Traffic lights -->
+  <circle cx="20" cy="18" r="6" class="dot-r"/>
+  <circle cx="40" cy="18" r="6" class="dot-y"/>
+  <circle cx="60" cy="18" r="6" class="dot-g"/>
+
+  <!-- Window title -->
+  <text x="430" y="23" text-anchor="middle" class="title">opensystem — NL Terminal</text>
+
+  <!-- === Line 1: first prompt + command === -->
+  <g class="line1">
+    <text x="20" y="72" class="prompt">opensystem</text>
+    <text x="111" y="72" class="cmd">❯</text>
+    <text x="125" y="72" class="cmd">create a pomodoro timer</text>
+  </g>
+
+  <!-- === Lines 2-8: create output === -->
+  <g class="line2">
+    <text x="20" y="92" class="info">  Classifying intent...</text>
+    <text x="195" y="92" class="value">CreateApp</text>
+  </g>
+  <g class="line3">
+    <text x="20" y="112" class="arrow">  → Generating AppSpec from prompt...</text>
+  </g>
+  <g class="line4">
+    <text x="20" y="132" class="arrow">  → App: </text>
+    <text x="74" y="132" class="value">"Pomodoro Timer"</text>
+    <text x="196" y="132" class="cmd"> — 25-minute focus timer with start/stop</text>
+  </g>
+  <g class="line5">
+    <text x="20" y="152" class="arrow">  → Generating Rust/Wasm code </text>
+    <text x="257" y="152" class="info">(this may take ~30s)...</text>
+  </g>
+  <g class="line6">
+    <text x="20" y="180" class="success">  ✓ App installed!</text>
+  </g>
+  <g class="line7">
+    <text x="20" y="200" class="info">    UUID: </text>
+    <text x="82" y="200" class="value">3f8a1c2d-e5b6-4a7f-9c8d-2b1e3f4a5c6d</text>
+  </g>
+  <g class="line8">
+    <text x="20" y="220" class="info">    Package: </text>
+    <text x="96" y="220" class="value">/apps/3f8a1c2d-.../app.osp</text>
+  </g>
+  <g class="line9">
+    <text x="20" y="240" class="info">    GUI layout: </text>
+    <text x="108" y="240" class="value">847 chars of UIDL</text>
+    <text x="255" y="240" class="info">  |  rendered </text>
+    <text x="329" y="240" class="value">800×600 → 1920000 RGBA bytes</text>
+    <text x="580" y="240" class="success"> ✓</text>
+  </g>
+
+  <!-- === Divider === -->
+  <line x1="20" y1="258" x2="840" y2="258" stroke="#30363d" stroke-width="1"/>
+
+  <!-- === Line 10: second prompt + command === -->
+  <g class="line10">
+    <text x="20" y="278" class="prompt">opensystem</text>
+    <text x="111" y="278" class="cmd">❯</text>
+    <text x="125" y="278" class="cmd">run pomodoro</text>
+  </g>
+
+  <!-- === Lines 11-16: run output === -->
+  <g class="line11">
+    <text x="20" y="298" class="arrow">  → Running: </text>
+    <text x="102" y="298" class="value">Pomodoro Timer (v0.1.0)</text>
+  </g>
+  <g class="line12">
+    <text x="20" y="318" class="arrow">  → Executing WASM sandbox...</text>
+  </g>
+  <g class="line13">
+    <text x="20" y="346" class="success">  ✓ App output:</text>
+  </g>
+  <g class="line14">
+    <text x="20" y="366" class="cmd">    Pomodoro Timer started. Focus for 25 minutes.</text>
+  </g>
+
+  <!-- === Divider === -->
+  <line x1="20" y1="384" x2="840" y2="384" stroke="#30363d" stroke-width="1"/>
+
+  <!-- === Line 15: third command === -->
+  <g class="line15">
+    <text x="20" y="404" class="prompt">opensystem</text>
+    <text x="111" y="404" class="cmd">❯</text>
+    <text x="125" y="404" class="cmd">list apps</text>
+  </g>
+
+  <g class="line16">
+    <text x="20" y="424" class="info">  NAME              VERSION   UUID</text>
+  </g>
+  <g class="line17">
+    <text x="20" y="444" class="success">  ● </text>
+    <text x="40" y="444" class="cmd">Pomodoro Timer    </text>
+    <text x="189" y="444" class="value">v0.1.0    </text>
+    <text x="256" y="444" class="info">3f8a1c2d-e5b6-...</text>
+  </g>
+
+  <!-- === Final prompt with cursor === -->
+  <g class="line18">
+    <text x="20" y="474" class="prompt">opensystem</text>
+    <text x="111" y="474" class="cmd">❯</text>
+    <rect x="127" y="460" width="8" height="16" class="cursor cursor-blink"/>
+  </g>
+</svg>

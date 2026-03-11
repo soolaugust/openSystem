@@ -39,24 +39,9 @@ not one that bolts AI on top of 50 years of POSIX legacy.
 
 > Say a sentence. Get a running app — in under 30 seconds.
 
-```
-opensystem> create a pomodoro timer
-  Classifying intent... CreateApp
-  → Generating AppSpec from prompt...
-  → App: "Pomodoro Timer" — 25-minute focus timer with start/stop controls
-  → Generating Rust/Wasm code (this may take ~30s)...
-  ✓ App installed!
-    UUID: 3f8a1c2d-...
-    Package: /apps/3f8a1c2d-.../app.osp
-    GUI layout: 847 chars of UIDL
-    GUI preview: rendered 800×600 → 1920000 RGBA bytes ✓
-
-opensystem> run pomodoro
-  → Running: Pomodoro Timer (v0.1.0)
-  → Executing WASM sandbox...
-  ✓ App output:
-    Pomodoro Timer started. Focus for 25 minutes.
-```
+<p align="center">
+  <img src="./assets/demo.svg" alt="openSystem demo" width="860"/>
+</p>
 
 **What just happened:** Natural language → LLM generates Rust/WASM code → compiled → Ed25519-signed `.osp` package → installed → executed in wasmtime sandbox. No package manager. No app store curation. No pre-existing binary.
 
@@ -87,50 +72,81 @@ opensystem> run pomodoro
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                     User Interaction Layer                   │
-│   Natural Language Terminal / Web UI / Voice (whisper.cpp)  │
-├──────────────────────────────────────────────────────────────┤
-│                   os-agent Daemon                            │
-│  Intent → CodeGen → UIGen → ResourceDecision → AppStore     │
-├──────────────┬───────────────┬──────────────────────────────┤
-│  App Runtime │  GUI Renderer │     System Service Bus       │
-│  Wasmtime    │  Bevy + wgpu  │     (os-syscall-bindings)    │
-├──────────────┴───────────────┴──────────────────────────────┤
-│                  AI Runtime Layer                            │
-│    Remote LLM API (OpenAI-compatible) + whisper.cpp         │
-├──────────────────────────────────────────────────────────────┤
-│               Resource Scheduling (AI-driven)                │
-│    eBPF probes + AI decision loop + cgroup v2               │
-├──────────────────────────────────────────────────────────────┤
-│           Linux 6.x Minimal Kernel                          │
-│    sched_ext + io_uring + eBPF + KMS/DRM + cgroup v2       │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph User["User Interaction Layer"]
+        NL["Natural Language Terminal"]
+        WebUI["Web UI"]
+        Voice["Voice (whisper.cpp)"]
+    end
+
+    subgraph Agent["os-agent Daemon"]
+        Intent["Intent Classifier"]
+        CodeGen["LLM CodeGen"]
+        UIGen["UIDL Generator"]
+        AppStore["App Store Client"]
+    end
+
+    subgraph Runtime["App Runtime"]
+        Wasm["wasmtime sandbox\n(WASIp1)"]
+        GUI["GUI Renderer\n(tiny-skia + ECS)"]
+        SysBus["System Service Bus\n(os-syscall-bindings)"]
+    end
+
+    subgraph AI["AI Runtime Layer"]
+        LLM["Remote LLM API\n(OpenAI-compatible / Anthropic)"]
+    end
+
+    subgraph Sched["Resource Scheduling"]
+        eBPF["eBPF CPU/IO Probes"]
+        CGroup["cgroup v2 Controls"]
+        AILoop["AI Decision Loop"]
+    end
+
+    subgraph Kernel["Linux 6.x Kernel"]
+        SchedExt["sched_ext"]
+        IoUring["io_uring"]
+        KMS["KMS/DRM"]
+    end
+
+    NL --> Intent
+    WebUI --> Intent
+    Voice --> Intent
+    Intent --> CodeGen
+    Intent --> UIGen
+    CodeGen --> LLM
+    UIGen --> LLM
+    CodeGen --> Wasm
+    UIGen --> GUI
+    GUI --> SysBus
+    Wasm --> SysBus
+    AppStore --> Intent
+    eBPF --> AILoop
+    AILoop --> CGroup
+    SysBus --> Kernel
+    CGroup --> Kernel
 ```
 
 ### App Lifecycle
 
-```
-User intent
-    ↓
-os-agent classifies → CreateApp
-    ↓
-LLM generates in parallel:
-  ┌─────────────────┐    ┌──────────────────────────┐
-  │  Rust/WASM code │    │  UIDL JSON (widget tree)  │
-  │  cargo check    │    │  validated + packed into  │
-  │  → app.wasm     │    │  → uidl.json in .osp      │
-  └────────┬────────┘    └────────────┬─────────────┘
-           └────────────┬─────────────┘
-                        ↓
-              .osp package → /apps/<uuid>/
-                        ↓
-        ┌───────────────┴───────────────┐
-        │  wasmtime sandbox             │  ←── RunApp intent
-        │  app.wasm executes            │
-        │  stdout captured              │
-        └───────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as os-agent
+    participant L as LLM API
+    participant W as wasmtime
+
+    U->>A: "create a pomodoro timer"
+    A->>A: classify → CreateApp
+    A->>L: generate Rust/WASM + UIDL (parallel)
+    L-->>A: app.wasm + uidl.json
+    A->>A: cargo check → pack .osp → Ed25519 sign
+    A-->>U: ✓ App installed (UUID: 3f8a1c2d-...)
+
+    U->>A: "run pomodoro"
+    A->>A: classify → RunApp
+    A->>W: execute app.wasm in sandbox
+    W-->>U: Pomodoro Timer started. Focus for 25 minutes.
 ```
 
 ---
@@ -253,8 +269,8 @@ openSystem is in active development. The areas most open for contribution:
 - **Wild ideas** — if you think an OS built for AI is interesting, open an issue
 
 ```bash
-cargo test --workspace          # Run all tests
-cargo clippy --workspace -- -D warnings  # Zero-warning policy
+cargo test --workspace                       # Run all tests
+cargo clippy --workspace -- -D warnings      # Zero-warning policy
 ```
 
 ---
